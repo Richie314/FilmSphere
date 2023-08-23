@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2023-08-23T09:12:52.620Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="c_4Kg56-9v88vDBEAj9X" version="21.6.8" type="device" pages="2">
+<mxfile host="Electron" modified="2023-08-23T09:29:07.999Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="OPYfAKTmIMB4KcjxMS8b" version="21.6.8" type="device" pages="2">
   <diagram id="R2lEEEUBdFMjLlhIrx00" name="ER - da ristrutturare">
     <mxGraphModel dx="2562" dy="523" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0" extFonts="Permanent Marker^https://fonts.googleapis.com/css?family=Permanent+Marker">
       <root>
@@ -1674,7 +1674,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="ER - ristrutturato" id="hbEsMPxsIgH3FjYUBM_x">
-    <mxGraphModel dx="2032" dy="201" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0" extFonts="Permanent Marker^https://fonts.googleapis.com/css?family=Permanent+Marker">
+    <mxGraphModel dx="2390" dy="418" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0" extFonts="Permanent Marker^https://fonts.googleapis.com/css?family=Permanent+Marker">
       <root>
         <mxCell id="rll4yicF2avdQcAr_AUw-0" />
         <mxCell id="rll4yicF2avdQcAr_AUw-1" parent="rll4yicF2avdQcAr_AUw-0" />
@@ -1882,7 +1882,7 @@
         <mxCell id="rll4yicF2avdQcAr_AUw-70" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;VideoFile&lt;/font&gt;" style="shape=rhombus;perimeter=rhombusPerimeter;whiteSpace=wrap;html=1;align=center;strokeWidth=3;strokeColor=#00FF00;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
           <mxGeometry x="-1600" y="474" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="rll4yicF2avdQcAr_AUw-71" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(1,N)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
+        <mxCell id="rll4yicF2avdQcAr_AUw-71" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(0,N)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
           <mxGeometry x="-1490.75" y="480" width="44" height="22" as="geometry" />
         </mxCell>
         <mxCell id="rll4yicF2avdQcAr_AUw-72" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(1,1)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
@@ -2774,7 +2774,7 @@
         <mxCell id="PtxgTd-Wc6xfIKkGT72c-2" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(1,1)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
           <mxGeometry x="-1452" y="641" width="38.45" height="19.23" as="geometry" />
         </mxCell>
-        <mxCell id="PtxgTd-Wc6xfIKkGT72c-4" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(1,N)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
+        <mxCell id="PtxgTd-Wc6xfIKkGT72c-4" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(0,N)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
           <mxGeometry x="-1442" y="569.5" width="29" height="14.5" as="geometry" />
         </mxCell>
         <mxCell id="PtxgTd-Wc6xfIKkGT72c-10" style="edgeStyle=orthogonalEdgeStyle;shape=connector;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;labelBackgroundColor=default;strokeColor=#00FF00;strokeWidth=2;fontFamily=Helvetica;fontSize=11;fontColor=default;endArrow=none;endFill=0;exitX=0.509;exitY=0.988;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitPerimeter=0;" parent="rll4yicF2avdQcAr_AUw-1" source="rll4yicF2avdQcAr_AUw-33" target="rll4yicF2avdQcAr_AUw-328" edge="1">
