@@ -1,4 +1,4 @@
-<mxfile host="Electron" modified="2023-08-26T10:10:54.644Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="kpU3dxe-I29B3NA_3wgf" version="21.6.8" type="device" pages="2">
+<mxfile host="Electron" modified="2023-08-26T13:31:25.872Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.8 Chrome/114.0.5735.289 Electron/25.5.0 Safari/537.36" etag="npOC5uR4GFxHZm4n5izd" version="21.6.8" type="device" pages="2">
   <diagram id="R2lEEEUBdFMjLlhIrx00" name="ER - da ristrutturare">
     <mxGraphModel dx="2549" dy="511" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0" extFonts="Permanent Marker^https://fonts.googleapis.com/css?family=Permanent+Marker">
       <root>
@@ -1663,7 +1663,7 @@
     </mxGraphModel>
   </diagram>
   <diagram name="ER - ristrutturato" id="hbEsMPxsIgH3FjYUBM_x">
-    <mxGraphModel dx="1939" dy="145" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0" extFonts="Permanent Marker^https://fonts.googleapis.com/css?family=Permanent+Marker">
+    <mxGraphModel dx="2714" dy="615" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" math="0" shadow="0" extFonts="Permanent Marker^https://fonts.googleapis.com/css?family=Permanent+Marker">
       <root>
         <mxCell id="rll4yicF2avdQcAr_AUw-0" />
         <mxCell id="rll4yicF2avdQcAr_AUw-1" parent="rll4yicF2avdQcAr_AUw-0" />
@@ -2675,9 +2675,6 @@
         </mxCell>
         <mxCell id="VApiNqBjs4lpEz5dhZdD-8" value="&lt;font style=&quot;font-size: 12px;&quot;&gt;Pagamento&lt;br&gt;Carta&lt;br&gt;&lt;/font&gt;" style="shape=rhombus;perimeter=rhombusPerimeter;whiteSpace=wrap;html=1;align=center;strokeWidth=3;strokeColor=#33FFFF;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
           <mxGeometry x="-287.75" y="444" width="125" height="62.5" as="geometry" />
-        </mxCell>
-        <mxCell id="VApiNqBjs4lpEz5dhZdD-11" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(1,1)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
-          <mxGeometry x="-439.25" y="474" width="46" height="17.5" as="geometry" />
         </mxCell>
         <mxCell id="VApiNqBjs4lpEz5dhZdD-12" value="&lt;font style=&quot;font-size: 15px;&quot;&gt;(1,N)&lt;/font&gt;" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="rll4yicF2avdQcAr_AUw-1" vertex="1">
           <mxGeometry x="-352.5" y="472" width="60" height="30" as="geometry" />
