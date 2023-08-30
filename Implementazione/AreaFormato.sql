@@ -21,7 +21,11 @@ CREATE TABLE IF NOT EXISTS `Edizione` (
     -- Rapporto d'aspetto, 16/9, 4/3, 1/1
     `RapportoAspetto` FLOAT NOT NULL DEFAULT 16 / 9,
 
-    FOREIGN KEY (`Film`) REFERENCES `Film`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+    -- Vincolo referenziale
+    FOREIGN KEY (`Film`) REFERENCES `Film`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+
+    -- Vincolo di dominio
+    CHECK (`RapportoAspetto` > 0.0)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `FormatoCodifica` (
@@ -43,11 +47,11 @@ CREATE TABLE IF NOT EXISTS `File` (
     `Edizione` INT NOT NULL,
 
     -- Relativi allo streaming
-    `Dimensione` INT UNSIGNED NOT NULL,
+    `Dimensione` BIGINT UNSIGNED NOT NULL,
     `BitRate` FLOAT NOT NULL,
 
     -- Formato Contentitore (MP4, MKV, ...)
-    `FormatoContenitore` VARCHAR(4),
+    `FormatoContenitore` VARCHAR(16),
 
     -- Formato Codifica Video
     `FamigliaAudio` VARCHAR(10) NOT NULL,
@@ -66,13 +70,21 @@ CREATE TABLE IF NOT EXISTS `File` (
     `Frequenza` FLOAT NOT NULL,
 
     -- Chiavi esterne
-    FOREIGN KEY (`Edizione`) REFERENCES `Edizione`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE
+    FOREIGN KEY (`Edizione`) REFERENCES `Edizione`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+
+    -- Vincoli di dominio
+    CHECK (`BitRate` > 0.0),
+    CHECK (`FPS` > 0.0)
+) Engine=InnoDB;
+
+CREATE TABLE IF NOT EXISTS Lingua (
+    Nome VARCHAR(32) NOT NULL PRIMARY KEY
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS Doppiaggio (
     -- File e Lingua da associare
     `File` INT NOT NULL,
-    `Lingua` VARCHAR() NOT NULL,
+    `Lingua` VARCHAR(32) NOT NULL,
 
     -- Chiavi
     PRIMARY KEY (`File`, `Lingua`),
@@ -83,7 +95,7 @@ CREATE TABLE IF NOT EXISTS Doppiaggio (
 CREATE TABLE IF NOT EXISTS Sottotitolaggio (
     -- File e Lingua da associare
     `File` INT NOT NULL,
-    `Lingua` VARCHAR() NOT NULL,
+    `Lingua` VARCHAR(32) NOT NULL,
 
     -- Chiavi
     PRIMARY KEY (`File`, `Lingua`),
@@ -101,3 +113,47 @@ CREATE TABLE IF NOT EXISTS Restrizione (
     FOREIGN KEY (`Edizione`) REFERENCES `Edizione`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`Paese`) REFERENCES `Paese`(`Codice`) ON DELETE CASCADE ON UPDATE CASCADE
 ) Engine=InnoDB;
+
+DROP TRIGGER IF EXISTS `InserimentoFile`;
+DROP TRIGGER IF EXISTS `ModificaFile`;
+DELIMITER $$
+
+CREATE TRIGGER `InserimentoFile`
+BEFORE INSERT ON `File`
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`,
+        FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
+        WHERE 
+            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
+            `Audio`.`Versione` = NEW.`VersioneAudio` AND
+            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND 
+            `Video`.`Versione` = NEW.`VersioneVideo`
+        HAVING `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`) THEN
+        
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'BitRate non valido!';
+    END IF;
+END ; $$
+
+CREATE TRIGGER `ModificaFile`
+BEFORE UPDATE ON `File`
+FOR EACH ROW
+BEGIN
+    IF EXISTS (
+        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`,
+        FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
+        WHERE 
+            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
+            `Audio`.`Versione` = NEW.`VersioneAudio` AND
+            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND 
+            `Video`.`Versione` = NEW.`VersioneVideo`
+        HAVING `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`) THEN
+        
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'BitRate non valido!';
+    END IF;
+END ; $$
+
+DELIMITER ;
