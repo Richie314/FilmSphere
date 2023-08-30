@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS `Edizione` (
     -- Rapporto d'aspetto, 16/9, 4/3, 1/1
     `RapportoAspetto` FLOAT NOT NULL DEFAULT 16 / 9,
 
-    FOREIGN KEY (`Film`) REFERENCES Film(`ID`)
+    FOREIGN KEY (`Film`) REFERENCES `Film`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `FormatoCodifica` (
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS `File` (
     `Frequenza` FLOAT NOT NULL,
 
     -- Chiavi esterne
-    FOREIGN KEY (`Edizione`) REFERENCES Edizione(`ID`)
+    FOREIGN KEY (`Edizione`) REFERENCES `Edizione`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS Doppiaggio (
@@ -76,8 +76,8 @@ CREATE TABLE IF NOT EXISTS Doppiaggio (
 
     -- Chiavi
     PRIMARY KEY (`File`, `Lingua`),
-    FOREIGN KEY (`File`) REFERENCES File(`ID`),
-    FOREIGN KEY (`Lingua`) REFERENCES Lingua(`Nome`)
+    FOREIGN KEY (`File`) REFERENCES `File`(`ID`),
+    FOREIGN KEY (`Lingua`) REFERENCES `Lingua`(`Nome`)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS Sottotitolaggio (
@@ -87,8 +87,8 @@ CREATE TABLE IF NOT EXISTS Sottotitolaggio (
 
     -- Chiavi
     PRIMARY KEY (`File`, `Lingua`),
-    FOREIGN KEY (`File`) REFERENCES File(`ID`),
-    FOREIGN KEY (`Lingua`) REFERENCES Lingua(`Nome`)
+    FOREIGN KEY (`File`) REFERENCES `File`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (`Lingua`) REFERENCES `Lingua`(`Nome`) ON DELETE CASCADE ON UPDATE CASCADE
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS Restrizione (
@@ -98,6 +98,6 @@ CREATE TABLE IF NOT EXISTS Restrizione (
 
     -- Chiavi
     PRIMARY KEY (`Edizione`, `Paese`),
-    FOREIGN KEY (`Edizione`) REFERENCES Edizione(`ID`),
-    FOREIGN KEY (`Paese`) REFERENCES Paese(`Codice`)
+    FOREIGN KEY (`Edizione`) REFERENCES `Edizione`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (`Paese`) REFERENCES `Paese`(`Codice`) ON DELETE CASCADE ON UPDATE CASCADE
 ) Engine=InnoDB;
