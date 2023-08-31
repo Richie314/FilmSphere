@@ -1,8 +1,7 @@
-CREATE DATABASE IF NOT EXISTS 'FilmSphere';
-USE 'FilmSphere';
+CREATE DATABASE IF NOT EXISTS 'FilmSphere'
+    CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; 
 
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_0900_ai_ci; 
+USE 'FilmSphere';
 
 CREATE TABLE IF NOT EXISTS `Server` (
     -- Chiave
@@ -120,7 +119,7 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     -- Uguali a Visualizzazione
     `TimeStamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
-    `Utente` NVARCHAR() NOT NULL,
+    `Utente` VARCHAR(100) NOT NULL,
     `IP` INT(4) NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL,
 
@@ -164,7 +163,7 @@ BEGIN
     WHERE `Server`.`ID` = ServerID;
 END ; $$
 
-CREATE TRIGGER ErogazioneCambiaServer 
+CREATE TRIGGER `ErogazioneCambiaServer`
 AFTER UPDATE ON Erogazione
 FOR EACH ROW     
 BEGIN
@@ -176,14 +175,14 @@ BEGIN
     END IF;
 END ; $$
 
-CREATE TRIGGER AggiungiErogazione 
+CREATE TRIGGER `AggiungiErogazione` 
 AFTER INSERT ON Erogazione
 FOR EACH ROW     
 BEGIN
     CALL AggiungiErogazioneServer(NEW.`Server`);
 END ; $$
 
-CREATE TRIGGER RimuoviErogazione 
+CREATE TRIGGER `RimuoviErogazione`
 AFTER DELETE ON Erogazione
 FOR EACH ROW     
 BEGIN
