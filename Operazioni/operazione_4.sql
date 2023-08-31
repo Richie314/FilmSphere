@@ -1,18 +1,21 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione4`;
+DROP PROCEDURE IF EXISTS `FilmEsclusiAbbonamento`;
+
 DELIMITER //
-CREATE PROCEDURE `Operazione4`(IN tipo_abbonamento VARCHAR(50))
+
+CREATE PROCEDURE `FilmEsclusiAbbonamento`(
+    IN TipoAbbonamento VARCHAR(50),
+    OUT NumeroFilm INT)
 BEGIN
 
-    -- Decidiamo se "ritornare" una tabella o un valore in output
+    SELECT COUNT(*) INTO NumeroFilm
+    FROM `Esclusione` E
+        INNER JOIN `GenereFilm` GF ON GF.Genere = E.Genere
+    WHERE E.`Abbonamento` = TipoAbbonamento;
 
-    SELECT COUNT(*)
-    FROM Esclusione E
-    INNER JOIN GenereFilm GF
-    ON GF.Genere = E.Genere
-    WHERE E.Abbonamento = tipo_abbonamento;
+    -- Film con solo alta qualita'???
 
-END
-//
+END ; //
+
 DELIMITER ;
