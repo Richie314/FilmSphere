@@ -11,14 +11,17 @@ BEGIN
                 F.Titolo,
                 COUNT(*) Visualizzazioni
             FROM Visualizzazione V
-            INNER JOIN Edizione E ON E.ID = V.Edizione
-            INNER JOIN Film F ON F.ID = E.Film
+            INNER JOIN Edizione E
+                ON E.ID = V.Edizione
+            INNER JOIN Film F
+                ON F.ID = E.Film
             GROUP BY F.Titolo
         )
     SELECT
         Titolo
     FROM TitoloVisualizzazione
-    ORDER BY Visualizzazioni DESC, Titolo ASC
+    ORDER BY Visualizzazioni DESC,
+        Titolo ASC
     LIMIT numero_film;
 
 END
