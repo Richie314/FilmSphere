@@ -9,13 +9,40 @@ CREATE PROCEDURE `FilmEsclusiAbbonamento`(
     OUT NumeroFilm INT)
 BEGIN
 
+    -- Film esclusi perche' il genere e' escluso
+    WITH `FilmEsclusiGenere` AS (
+        SELECT DISTINCT GF.`Film`
+        FROM `Esclusione` E
+            INNER JOIN `GenereFilm` GF USING(`Genere`)
+        WHERE E.`Abbonamento` = TipoAbbonamento
+    ), 
+    
+    `FileVisualizzabili` AS (
+        SELECT F.`ID`, F.`Edizione`
+        FROM `File` F
+            INNER JOIN `Abbonamento` A ON A.`Definizione` IS NULL OR A.`Definizione` > F.`Risoluzione`
+        WHERE A.`ID` = TipoAbbonamento
+    ), 
+    -- Film esclusi perche' presenti solo in qualita' maggiore dalla massima disponibile con l'abbonamento
+    `FilmEsclusiRisoluzione` AS (
+        SELECT DISTINCT F.`ID` AS "Film"
+        FROM `Film` F
+            INNER JOIN `Edizione` E ON E.`Film` = F.`ID`
+        WHERE NOT EXISTS (
+            SELECT *
+            FROM `FileVisualizzabili` 
+            WHERE `FileVisualizzabili`.`Edizione` = E.`ID`
+        )
+    )
+    -- UNION senza ALL rimuovera' in automatico gli ID duplicati
     SELECT COUNT(*) INTO NumeroFilm
-    FROM `Esclusione` E
-        INNER JOIN `GenereFilm` GF ON GF.Genere = E.Genere
-    WHERE E.`Abbonamento` = TipoAbbonamento;
+    FROM (
+        SELECT * FROM `FilmEsclusiGenere`
 
-    -- Film con solo alta qualita'???
+        UNION
 
+        SELECT * FROM `FilmEsclusiRisoluzione`
+    );
 END ; //
 
 DELIMITER ;
