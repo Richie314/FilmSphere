@@ -14,6 +14,8 @@ BEGIN
         INNER JOIN `GenereFilm` GF ON GF.Genere = E.Genere
     WHERE E.`Abbonamento` = TipoAbbonamento;
 
+    -- Film con solo alta qualita'???
+
 END ; //
 
 DELIMITER ;
