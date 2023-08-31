@@ -22,7 +22,10 @@ USE `FilmSphere`;
 CREATE TABLE IF NOT EXISTS `Paese` (
   `Codice` CHAR(2) NOT NULL PRIMARY KEY,
   `Nome` VARCHAR(50) NOT NULL,
-  `Posizione` POINT DEFAULT NULL
+  `Posizione` POINT DEFAULT NULL,
+
+  CHECK (ST_X(`Posizione`) BETWEEN -180.00 AND 180.00), -- Contollo longitudine
+  CHECK (ST_Y(`Posizione`) BETWEEN -90.00 AND 90.00) -- Controllo latitudine
 ) Engine=InnoDB;
 
 -- Riga automatica necessaria per alcune funzionalita'
