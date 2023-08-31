@@ -304,7 +304,7 @@ DETERMINISTIC
 BEGIN
     DECLARE HexStr CHAR(15) DEFAULT NULL;
 
-    SET HexStr = LPAD(HEX(IP), 8);
+    SET HexStr = LPAD(HEX(IP), 8, 0);
 
     RETURN CONCAT(
         CONV(SUBSTR(HexStr, 1, 2), 16, 10), -- 1 and 2

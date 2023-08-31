@@ -17,44 +17,101 @@ USE `FilmSphere`;
 -- ----------------------------
 
 CREATE TABLE IF NOT EXISTS `Utente` (
-  `Codice` VARCHAR(100) NOT NULL PRIMARY KEY,
-  `Nome` VARCHAR(50),
-  `Cognome` VARCHAR(50),
-  `Email` VARCHAR(100) NOT NULL,
-  `Password` VARCHAR(100) NOT NULL,
-  `Abbonamento` VARCHAR(50),
-  `DataInizioAbbonamento` DATE,
-  
-  CHECK( `Email` REGEXP '[A-Za-z0-9]{1,}[\.\-A-Za-z0-9]{0,}[a-zA-Z0-9]@[a-z]{1}[\.\-\_a-z0-9]{0,}\.[a-z]{1,10}')
+	`Codice` VARCHAR(100) NOT NULL PRIMARY KEY,
+	`Nome` VARCHAR(50),
+	`Cognome` VARCHAR(50),
+	`Email` VARCHAR(100) NOT NULL,
+	`Password` VARCHAR(100) NOT NULL,
+	`Abbonamento` VARCHAR(50),
+	`DataInizioAbbonamento` DATE,
+
+	CHECK( `Email` REGEXP '[A-Za-z0-9]{1,}[\.\-A-Za-z0-9]{0,}[a-zA-Z0-9]@[a-z]{1}[\.\-\_a-z0-9]{0,}\.[a-z]{1,10}')
 ) Engine=InnoDB;
 
 
 CREATE TABLE IF NOT EXISTS `Recensione` (
-  `Film` INT NOT NULL,
-  `Utente` VARCHAR(100) NOT NULL, 
-  `Voto` FLOAT,
+	`Film` INT NOT NULL,
+	`Utente` VARCHAR(100) NOT NULL, 
+	`Voto` FLOAT,
 
-  PRIMARY KEY(`Film`, `Utente`),
-  FOREIGN KEY(`Film`) REFERENCES `Film` (`ID`)
-    ON UPDATE CASCADE ON DELETE CASCADE,
-  FOREIGN KEY(`Utente`) REFERENCES `Utente` (`Codice`)
-    ON UPDATE CASCADE ON DELETE CASCADE,
+	PRIMARY KEY(`Film`, `Utente`),
+	FOREIGN KEY(`Film`) REFERENCES `Film` (`ID`)
+	ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY(`Utente`) REFERENCES `Utente` (`Codice`)
+	ON UPDATE CASCADE ON DELETE CASCADE,
 
-  CHECK(`Voto` BETWEEN 0.0 AND 5.0)
+	CHECK(`Voto` BETWEEN 0.0 AND 5.0)
 ) Engine=InnoDB;
 
+DROP TRIGGER IF EXISTS InserimentoRecensione;
+DROP TRIGGER IF EXISTS CancellazioneRecensione;
+DROP TRIGGER IF EXISTS ModificaRecensione;
+
+DROP PROCEDURE IF EXISTS AggiungiRecensione;
+DROP PROCEDURE IF EXISTS RimuoviRecensione;
+
+DELIMITER $$
+
+CREATE TRIGGER InserimentoRecensione
+AFTER INSERT ON Recensione
+FOR EACH ROW
+BEGIN
+	CALL AggiungiRecensione(NEW.`Film`, NEW.`Voto`);
+END ; $$
+
+CREATE TRIGGER CancellazioneRecensione
+AFTER DELETE ON Recensione
+FOR EACH ROW
+BEGIN
+	CALL RimuoviRecensione(OLD.`Film`, OLD.`Voto`);
+END ; $$
+
+CREATE TRIGGER ModificaRecensione
+AFTER UPDATE ON Recensione
+FOR EACH ROW
+BEGIN
+	CALL AggiungiRecensione(NEW.`Film`, NEW.`Voto`);
+	CALL RimuoviRecensione(OLD.`Film`, OLD.`Voto`);
+END ; $$
+
+CREATE PROCEDURE AggiungiRecensione(IN Film_ID INT, IN ValoreVoto FLOAT)
+BEGIN
+	UPDATE `Film`
+	SET 
+		`Film`.`NumeroRecensioni` = `Film`.`NumeroRecensioni` + 1,
+		`Film`.`MediaRecensioni` = IF (
+			`Film`.`MediaRecensioni` IS NULL,
+			ValoreVoto,
+			(`Film`.`MediaRecensioni` * `Film`.`NumeroRecensioni` + ValoreVoto) / (`Film`.`NumeroRecensioni` + 1))
+	WHERE `Film`.`ID` = Film_ID;
+END ; $$
+
+CREATE PROCEDURE RimuoviRecensione(IN Film_ID INT, IN ValoreVoto FLOAT)
+BEGIN
+	UPDATE `Film`
+	SET 
+		`Film`.`NumeroRecensioni` = `Film`.`NumeroRecensioni` - 1,
+		`Film`.`MediaRecensioni` = IF (
+			`Film`.`NumeroRecensioni` = 1,
+			NULL,
+			(`Film`.`MediaRecensioni` * `Film`.`NumeroRecensioni` - ValoreVoto) / (`Film`.`NumeroRecensioni` - 1))
+	WHERE `Film`.`ID` = Film_ID AND `Film`.`NumeroRecensioni` > 0;
+END ; $$
+
+DELIMITER ;
+
 CREATE TABLE IF NOT EXISTS `Connessione` (
-  `Utente` VARCHAR(100) NOT NULL,
-  `IP` INT(4) NOT NULL,
-  `Inizio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  `Hardware` VARCHAR(128),
+	`Utente` VARCHAR(100) NOT NULL,
+	`IP` INT(4) NOT NULL,
+	`Inizio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	`Hardware` VARCHAR(128),
 
-  PRIMARY KEY(`Utente`, `IP`, `Inizio`),
-  FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
-    ON UPDATE CASCADE ON DELETE CASCADE,
+	PRIMARY KEY(`Utente`, `IP`, `Inizio`),
+	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
+	ON UPDATE CASCADE ON DELETE CASCADE,
 
-  CHECK (`Fine` >= `Inizio`)
+	CHECK (`Fine` >= `Inizio`)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Visualizzazione` (
