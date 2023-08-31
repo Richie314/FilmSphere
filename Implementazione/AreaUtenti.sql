@@ -132,7 +132,7 @@ CREATE TABLE IF NOT EXISTS `Abbonamento` (
     `Tipo` VARCHAR(50) NOT NULL PRIMARY KEY,
     `Tariffa` INT NOT NULL,
     `Durata` INT NOT NULL,
-    `Definizione` BIGINT UNSIGNED DEFAULT NULL,
+    `Definizione` BIGINT UNSIGNED NOT NULL DEFAULT 0,
     `Offline` BOOLEAN DEFAULT FALSE,
     `MaxOre` INT DEFAULT 25,
     `GBMensili` INT,

@@ -17,22 +17,21 @@ BEGIN
         WHERE E.`Abbonamento` = TipoAbbonamento
     ), 
     
-    `FileVisualizzabili` AS (
-        SELECT F.`ID`, F.`Edizione`
+    -- La minor qualita' fruibile di un Film
+    `FilmMinimaRisouzione` AS (
+        SELECT `Film`.`ID`, MIN(F.Risoluzione) AS "Risoluzione"
         FROM `File` F
-            INNER JOIN `Abbonamento` A ON A.`Definizione` IS NULL OR A.`Definizione` > F.`Risoluzione`
-        WHERE A.`ID` = TipoAbbonamento
+            INNER JOIN `Edizione` E ON F.`Edizione` = E.`ID`
+            INNER JOIN `Film` ON E.`Film` = `Film`.`ID`
+        GROUP BY `Film`.`ID`
     ), 
+    
     -- Film esclusi perche' presenti solo in qualita' maggiore dalla massima disponibile con l'abbonamento
     `FilmEsclusiRisoluzione` AS (
-        SELECT DISTINCT F.`ID` AS "Film"
-        FROM `Film` F
-            INNER JOIN `Edizione` E ON E.`Film` = F.`ID`
-        WHERE NOT EXISTS (
-            SELECT *
-            FROM `FileVisualizzabili` 
-            WHERE `FileVisualizzabili`.`Edizione` = E.`ID`
-        )
+        SELECT F.`ID` AS "Film"
+        FROM `FilmMinimaRisoluzione` F
+            INNER JOIN `Abbonamento` A ON A.`Definizione` > F.`Risoluzione`
+        WHERE A.`Definizione` > 0 AND A.`Tipo` = TipoAbbonamento
     )
     -- UNION senza ALL rimuovera' in automatico gli ID duplicati
     SELECT COUNT(*) INTO NumeroFilm
