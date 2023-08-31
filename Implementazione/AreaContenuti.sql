@@ -10,143 +10,126 @@
 -- -----------------------------
 -- CREAZIONE DATABASE
 -- -----------------------------
-DROP DATABASE IF EXISTS `FilmSphere`; -- Riccardo, Simone
 CREATE DATABASE IF NOT EXISTS `FilmSphere`
-CHARACTER SET utf8mb4           -- UNICODE UTF-8 USED (https://dev.mysql.com/doc/refman/8.0/en/charset.html)
-COLLATE utf8mb4_0900_ai_ci;     -- COLLATION selected (How characters are sorted)
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;          -- UNICODE UTF-8 USED (https://dev.mysql.com/doc/refman/8.0/en/charset.html)
 
--- ----------------------------
--- FK
--- ----------------------------
+USE `FilmSphere`;
 
 -- ----------------------------
 -- AREA CONTENUTI
 -- ----------------------------
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`Paese` (
-  `Codice` CHAR(2) NOT NULL,
-  `Nome` VARCHAR(50),
-  `Posizione` POINT,
-  PRIMARY KEY(`Codice`)
-) Engine = InnoDB;
+CREATE TABLE IF NOT EXISTS `Paese` (
+  `Codice` CHAR(2) NOT NULL PRIMARY KEY,
+  `Nome` VARCHAR(50) NOT NULL,
+  `Posizione` POINT DEFAULT NULL
+) Engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`Artista` (
+-- Riga automatica necessaria per alcune funzionalita'
+INSERT INTO `Paese` (`Codice`, `Nome`) VALUES ('??', 'Mondo');
+
+CREATE TABLE IF NOT EXISTS `Artista` (
   `Nome` VARCHAR(50) NOT NULL,
   `Cognome` VARCHAR(50) NOT NULL,
-  `Popolarita` FLOAT,    
+  `Popolarita` FLOAT NOT NULL,    
+
   PRIMARY KEY(`Nome`, `Cognome`),
-  CHECK(Popolarita >= 0 AND Popolarita <= 10)
-) Engine = InnoDB;
+  CHECK(Popolarita BETWEEN 0.0 AND 10.0)
+) Engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`CasaProduzione` (
-  `Nome` VARCHAR(50) NOT NULL,
-  `Paese` CHAR(2),
-  PRIMARY KEY(`Nome`),
-  FOREIGN KEY (`Paese`)
-  REFERENCES `FilmSphere`.`Paese` (`Codice`)
-  ON DELETE CASCADE
-  ON UPDATE CASCADE
-) Engine = InnoDB;
+CREATE TABLE IF NOT EXISTS `CasaProduzione` (
+  `Nome` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `Paese` CHAR(2) NOT NULL,
+  FOREIGN KEY (`Paese`) REFERENCES `Paese` (`Codice`)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) Engine=InnoDB;
 
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`Film` (
-  `ID` INT NOT NULL AUTO_INCREMENT,
-  `Titolo` VARCHAR(100),
-  `Descrizione` VARCHAR(500),
-  `Anno` YEAR,
+CREATE TABLE IF NOT EXISTS `Film` (
+  `ID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `Titolo` VARCHAR(100) NOT NULL,
+  `Descrizione` VARCHAR(500) NOT NULL,
+  `Anno` YEAR NOT NULL,
   `CasaProduzione` VARCHAR(50) NOT NULL,  
   `NomeRegista` VARCHAR(50) NOT NULL, 
   `CognomeRegista` VARCHAR(50) NOT NULL,  
-  `MediaRecensioni` FLOAT,
-  `NumeroRecensioni` INT,
-  PRIMARY KEY (`ID`),
-  CHECK(`MediaRecensioni` >= 0 AND `MediaRecensioni` <= 5),
-  CHECK(`NumeroRecensioni` >= 0),
-  FOREIGN KEY (`CasaProduzione`)
-  REFERENCES `FilmSphere`.`CasaProduzione` (`Nome`)
-  ON DELETE CASCADE
-  ON UPDATE CASCADE,
-  FOREIGN KEY (`NomeRegista`, `CognomeRegista`)
-  REFERENCES `FilmSphere`.`Artista` (`Nome`, `Cognome`)
-  ON DELETE CASCADE
-  ON UPDATE CASCADE
-) Engine = InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`VincitaPremio` (
+  `MediaRecensioni` FLOAT DEFAULT NULL,
+  `NumeroRecensioni` INT NOT NULL DEFAULT 0,
+  
+  
+  FOREIGN KEY (`CasaProduzione`) REFERENCES `CasaProduzione` (`Nome`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY (`NomeRegista`, `CognomeRegista`) REFERENCES `Artista` (`Nome`, `Cognome`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+
+  CHECK(`MediaRecensioni` BETWEEN 0.0 AND 5.0),
+  CHECK(`NumeroRecensioni` >= 0)
+) Engine=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `VincitaPremio` (
   `Macrotipo` VARCHAR(50) NOT NULL,
   `Microtipo` VARCHAR(50) NOT NULL,
   `Data` DATE NOT NULL,
   `Film` INT NOT NULL,
   `NomeArtista` VARCHAR(50),
   `CognomeArtista` VARCHAR(50),
-  PRIMARY KEY(`Macrotipo`, `Microtipo`, `Data`),
-  FOREIGN KEY(`Film`)
-  REFERENCES `FilmSphere`.`Film` (`ID`)
-  ON DELETE CASCADE
-  ON UPDATE CASCADE,
-  FOREIGN KEY(`NomeArtista`, `CognomeArtista`)
-  REFERENCES `FilmSphere`.`Artista` (`Nome`, `Cognome`)
-  ON UPDATE CASCADE 
-  ON DELETE CASCADE 
-) Engine = InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`Recitazione` (
+  PRIMARY KEY(`Macrotipo`, `Microtipo`, `Data`),
+  FOREIGN KEY(`Film`) REFERENCES `Film` (`ID`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY(`NomeArtista`, `CognomeArtista`) REFERENCES `Artista` (`Nome`, `Cognome`)
+    ON UPDATE CASCADE ON DELETE CASCADE 
+) Engine=InnoDB;
+
+CREATE TABLE IF NOT EXISTS `Recitazione` (
   `Film` INT NOT NULL,
   `NomeAttore` VARCHAR(50) NOT NULL,
   `CognomeAttore` VARCHAR(50) NOT NULL,
+
   PRIMARY KEY(`Film`, `NomeAttore`, `CognomeAttore`),
-  FOREIGN KEY(`Film`)
-  REFERENCES `FilmSphere`.`Film` (`ID`)
-  ON DELETE CASCADE
-  ON UPDATE CASCADE,
-  FOREIGN KEY(`NomeAttore`, `CognomeAttore`)
-  REFERENCES `FilmSphere`.`Artista` (`Nome`, `Cognome`)
-  ON UPDATE CASCADE 
-  ON DELETE CASCADE 
-) Engine = InnoDB;
+  FOREIGN KEY(`Film`) REFERENCES `Film` (`ID`)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  FOREIGN KEY(`NomeAttore`, `CognomeAttore`) REFERENCES `Artista` (`Nome`, `Cognome`)
+    ON UPDATE CASCADE ON DELETE CASCADE 
+) Engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`Critico` (
-  `Codice` INT NOT NULL AUTO_INCREMENT,
-  `Nome` VARCHAR(50),
-  `Cognome` VARCHAR(50),
-  PRIMARY KEY(`Codice`)
-) Engine = InnoDB;
+CREATE TABLE IF NOT EXISTS `Critico` (
+  `Codice` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `Nome` VARCHAR(50) NOT NULL,
+  `Cognome` VARCHAR(50) NOT NULL
+) Engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`Critica` (
-  `Critico` INT NOT NULL,
+CREATE TABLE IF NOT EXISTS `Critica` (
   `Film` INT NOT NULL,
-  `Testo` VARCHAR(500),
-  `Data` DATE,
-  `Voto` FLOAT,
-  PRIMARY KEY(`Critico`, `Film`),
-  FOREIGN KEY(`Film`)
-  REFERENCES `FilmSphere`.`Film` (`ID`)
-  ON UPDATE CASCADE
-  ON DELETE CASCADE,
-  FOREIGN KEY(`Critico`)
-  REFERENCES `FilmSphere`.`Critico` (`Codice`)
-  ON UPDATE CASCADE 
-  ON DELETE CASCADE, 
-  CHECK(`Voto` >= 0 AND `Voto` <= 5)
-) Engine = InnoDB;
+  `Critico` INT NOT NULL,
+
+  `Testo` VARCHAR(512) NOT NULL,
+  `Data` DATE NOT NULL,
+  `Voto` FLOAT NOT NULL,
+
+  PRIMARY KEY(`Film`, `Critico`),
+  FOREIGN KEY(`Film`) REFERENCES `Film` (`ID`)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY(`Critico`) REFERENCES `Critico` (`Codice`)
+    ON UPDATE CASCADE ON DELETE CASCADE, 
+
+  CHECK(`Voto` BETWEEN 0.0 AND 5.0)
+) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `FilmSphere`.`Genere` (
-  `Nome` VARCHAR(50) NOT NULL,
-  PRIMARY KEY(`Nome`)
-) Engine = InnoDB;
+  `Nome` VARCHAR(50) NOT NULL PRIMARY KEY
+) Engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`GenereFilm` (
-  `Genere` VARCHAR(50) NOT NULL,
+CREATE TABLE IF NOT EXISTS `GenereFilm` (
   `Film` INT NOT NULL,
-  PRIMARY KEY(`Genere`, `Film`),
-  FOREIGN KEY(`Film`)
-  REFERENCES `FilmSphere`.`Film` (`ID`)
-  ON UPDATE CASCADE 
-  ON DELETE CASCADE,
-  FOREIGN KEY(`Genere`)
-  REFERENCES `FilmSphere`.`Genere` (`Nome`)
-  ON UPDATE CASCADE 
-  ON DELETE CASCADE 
+  `Genere` VARCHAR(50) NOT NULL,
+
+  PRIMARY KEY(`Film`, `Genere`),
+  FOREIGN KEY(`Film`) REFERENCES `Film` (`ID`)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  FOREIGN KEY(`Genere`) REFERENCES `Genere` (`Nome`)
+    ON UPDATE CASCADE ON DELETE CASCADE 
 ) Engine = InnoDB;
 
 

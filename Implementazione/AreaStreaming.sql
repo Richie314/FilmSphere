@@ -1,7 +1,7 @@
-CREATE DATABASE IF NOT EXISTS 'FilmSphere'
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; 
+CREATE DATABASE IF NOT EXISTS `FilmSphere`
+    CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; 
 
-USE 'FilmSphere';
+USE `FilmSphere`;
 
 CREATE TABLE IF NOT EXISTS `Server` (
     -- Chiave
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS `DistanzaPrecalcolata` (
 ) Engine=InnoDB;
 
 DROP PROCEDURE IF EXISTS `CalcolaDistanzaPaese`;
-DROP TRIGGER IF EXISTS `CalcolaDistanzaServer`;
+DROP PROCEDURE IF EXISTS `CalcolaDistanzaServer`;
 
 DROP TRIGGER IF EXISTS `InserimentoPaese`;
 DROP TRIGGER IF EXISTS `ModificaPaese`;
@@ -121,10 +121,10 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
     `IP` INT(4) NOT NULL,
-    `InizioConnessione` TIMESTAMP NOT NULL,
+    `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Quando il Server ha iniziato a essere usato
-    `InizioErogazione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    `InizioErogazione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Il Server in uso
     `Server` INT NOT NULL,
@@ -134,7 +134,7 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     FOREIGN KEY (`TimeStamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`)
         REFERENCES `Visualizzazione`(`TimeStamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`) 
         ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY `Server` REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (`Server`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE,
 
     -- Vincoli di dominio
     CHECK (`TimeStamp` BETWEEN `InizioConnessione` AND `InizioErogazione`)
@@ -163,8 +163,8 @@ BEGIN
     WHERE `Server`.`ID` = ServerID;
 END ; $$
 
-CREATE TRIGGER `ErogazioneCambiaServer`
-AFTER UPDATE ON Erogazione
+CREATE TRIGGER `ModificaErogazione`
+BEFORE UPDATE ON Erogazione
 FOR EACH ROW     
 BEGIN
     SET NEW.InizioErogazione = CURRENT_TIMESTAMP;
@@ -198,24 +198,23 @@ CREATE TABLE IF NOT EXISTS `IPRange` (
     `Fine` INT(4) UNSIGNED NOT NULL,
 
     -- Inizio e fine validita'
-    `DataInizio` TIMESTAMP NOT NULL,
-    `DataFine` TIMESTAMP DEFAULT NULL,
+    `DataInizio` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `DataFine` TIMESTAMP NULL DEFAULT NULL,
 
     -- Paese che possiede
     `Paese` CHAR(2) NOT NULL DEFAULT '??',
         
     -- Chiavi
     PRIMARY KEY (`Inizio`, `Fine`, `DataInizio`),
-    FOREIGN KEY `Paese` REFERENCES `Paese`(`Codice`) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (`Paese`) REFERENCES `Paese`(`Codice`) ON UPDATE CASCADE ON DELETE CASCADE,
 
     -- Vincoli di dominio
     CHECK (`Fine` >= `Inizio`),
-    CHECK (`DataInizio` <= CURRENT_TIMESTAMP),
-    CHECK (`DataFine` BETWEEN `DataInizio` AND CURRENT_TIMESTAMP)
+    CHECK (`DataFine` >= `DataInizio`)
 ) Engine=InnoDB;
 
--- Drop functions that will be redeclared
 
+-- Rimuovo funzioni, trigger e schedule prima di riaggiungerli
 
 DROP FUNCTION IF EXISTS Ip2Int;
 DROP FUNCTION IF EXISTS LocalHostIpParse;
@@ -229,15 +228,18 @@ DROP FUNCTION IF EXISTS IpAppartieneRangeInData;
 DROP FUNCTION IF EXISTS Ip2Paese;
 DROP FUNCTION IF EXISTS Ip2PaeseStorico;
 
+DROP TRIGGER IF EXISTS IpRangeControlloInserimento;
+DROP TRIGGER IF EXISTS IpRangeControlloAggiornamento;
+
 DROP EVENT IF EXISTS IpRangeRimozioneErrori;
 
 DELIMITER $$
 
-------------------------------------------------------
+-- ----------------------------------------------------
 --
 --           Funzioni di utilita' sugli IP4
 --
-------------------------------------------------------
+-- ----------------------------------------------------
 
 
 CREATE FUNCTION LocalHostIpParse(IP VARCHAR(15))
@@ -296,7 +298,7 @@ BEGIN
     RETURN Int2Return;
 END ; $$
 
-CREATE FUNCTION Ip2Int(IP INT(4))
+CREATE FUNCTION Int2Ip(IP INT(4))
 RETURNS VARCHAR(15)
 DETERMINISTIC
 BEGIN
@@ -316,11 +318,11 @@ BEGIN
 
 END ; $$
 
-------------------------------------------------------
+-- ----------------------------------------------------
 --
 --         Funzioni di utilita' sui Range IP4
 --
-------------------------------------------------------
+-- ----------------------------------------------------
 
 CREATE FUNCTION IpRangeCollidono(
     Inizio1 VARCHAR(15), Fine1 VARCHAR(15), 
@@ -364,14 +366,13 @@ CREATE FUNCTION IpAppartieneRangeInData(
     Fine INT(4),
     DataInizio TIMESTAMP,
     DataFine TIMESTAMP,
-    IP INT(4)
+    IP INT(4),
     DataDaControllare TIMESTAMP)
 RETURNS BOOLEAN
 DETERMINISTIC
 BEGIN
     RETURN 
-        (IP BETWEEN Inizio AND Fine) 
-        AND IpRangeValidoInData(DataInizio, DataFine, DataDaControllare);
+        (IP BETWEEN Inizio AND Fine) AND IpRangeValidoInData(DataInizio, DataFine, DataDaControllare);
 END ; $$
 
 CREATE FUNCTION Ip2PaeseStorico(ip INT(4), DataDaControllare TIMESTAMP)
@@ -380,10 +381,6 @@ NOT DETERMINISTIC
 READS SQL DATA
 BEGIN
     DECLARE Codice CHAR(2) DEFAULT '??';
-
-    IF DataDaControllare IS NULL THEN
-        RETURN Ip2PaeseStorico(ip, CURRENT_TIMESTAMP);
-    END IF;
 
     IF ip IS NULL THEN
         RETURN Codice;
@@ -405,20 +402,20 @@ BEGIN
     RETURN Codice;
 END ; $$
 
-CREATE FUNCTION Ip2Paese(ip INT(4), DataDaControllare TIMESTAMP)
+CREATE FUNCTION Ip2Paese(ip INT(4))
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA
 BEGIN
-    RETURN Ip2PaeseStorico(ip, NULL);
+    RETURN Ip2PaeseStorico(ip, CURRENT_TIMESTAMP);
 END ; $$
 
 
-------------------------------------------------------
+-- ----------------------------------------------------
 --
 --    Trigger per mantenere IPRanges consistenti
 --
-------------------------------------------------------
+-- ----------------------------------------------------
 
 CREATE TRIGGER IpRangeControlloInserimento
 BEFORE INSERT ON IPRange
@@ -428,105 +425,104 @@ trigger_body:BEGIN
     -- Controlliamo se il record esiste gia' (ma con data diversa)
     IF EXISTS (
         SELECT * 
-        FROM IPRange r
+        FROM `IPRange` r
         WHERE 
-            r.Inizio = NEW.Inizio AND 
-            r.Fine = NEW.Fine AND 
-            IpRangeValidoInData(r.DataInizio, r.DataFine, NEW.DataInizio) AND 
+            r.`Inizio` = NEW.`Inizio` AND 
+            r.`Fine` = NEW.`Fine` AND 
+            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND 
             -- Se puntano allo stesso paese vuol dire che e' il solito range non ancora scaduto
-            r.Paese = NEW.Paese
+            r.`Paese` = NEW.`Paese`
         ) THEN
         
         -- Invalidiamo il range appena inserito, sara' poi rimosso
-        SET NEW.country = '??';
+        SET NEW.`Paese` = '??';
         LEAVE trigger_body;
     END IF;
 
     -- Un record gia' presente, con priorita' maggiori, "rompe" quello appena inserito
     IF EXISTS (
         SELECT * 
-        FROM IpRange r
+        FROM `IPRange` r
         WHERE 
-            IpRangeCollidono(NEW.Inizio, NEW.Fine, r.Inizio, r.Fine) AND
-            IpRangeValidoInData(r.DataInizio, r.DataFine, NEW.DataInizio) AND
-            r.Paese <> '??'
+            IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, r.`Inizio`, r.`Fine`) AND
+            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND
+            r.`Paese` <> '??'
         ) THEN
         
         -- Rimuovo il record appena inserito
-        SET NEW.Paese = '??';
+        SET NEW.`Paese` = '??';
         LEAVE trigger_body;
     END IF;
 
     -- Se il record inserito "rompe" uno gia' presente, con meno piorita' si fa scadere quello gia' presente
-    UPDATE IPRange
-    SET IPRange.DataFine = NEW.DataInizio - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
+    UPDATE `IPRange`
+    SET `IPRange`.`DataFine` = NEW.`DataInizio` - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
     WHERE
-        IpRangeCollidono(NEW.Inizio, NEW.Fine, IPRange.Inizio, IPRange.Fine)  AND
-        IpRangeValidoInData(NEW.DataInizio, NEW.DataFine, IPRange.DataInizio)
-        IPRange.Paese <> '??';
+        IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, IPRange.`Inizio`, IPRange.`Fine`)  AND
+        IpRangeValidoInData(NEW.`DataInizio`, NEW.`DataFine`, IPRange.`DataInizio`) AND
+        IPRange.`Paese` <> '??';
     
 END ; $$
 
 CREATE TRIGGER IpRangeControlloAggiornamento
-BEFORE INSERT ON IPRange
+BEFORE UPDATE ON IPRange
 FOR EACH ROW
 trigger_body:BEGIN
 
     -- Controlliamo se il record esiste gia' (ma con data diversa)
     IF EXISTS (
         SELECT * 
-        FROM IPRange r
+        FROM `IPRange` r
         WHERE 
-            r.Inizio = NEW.Inizio AND 
-            r.Fine = NEW.Fine AND 
-            IpRangeValidoInData(r.DataInizio, r.DataFine, NEW.DataInizio) AND 
+            r.`Inizio` = NEW.`Inizio` AND 
+            r.`Fine` = NEW.`Fine` AND 
+            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND 
             -- Se puntano allo stesso paese vuol dire che e' il solito range non ancora scaduto
-            r.Paese = NEW.Paese
+            r.`Paese` = NEW.`Paese`
         ) THEN
         
         -- Invalidiamo il range appena inserito, sara' poi rimosso
-        SET NEW.country = '??';
+        SET NEW.`Paese` = '??';
         LEAVE trigger_body;
     END IF;
 
     -- Un record gia' presente, con priorita' maggiori, "rompe" quello appena inserito
     IF EXISTS (
         SELECT * 
-        FROM IpRange r
+        FROM `IPRange` r
         WHERE 
-            IpRangeCollidono(NEW.Inizio, NEW.Fine, r.Inizio, r.Fine) AND
-            IpRangeValidoInData(r.DataInizio, r.DataFine, NEW.DataInizio) AND
-            r.Paese <> '??'
+            IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, r.`Inizio`, r.`Fine`) AND
+            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND
+            r.`Paese` <> '??'
         ) THEN
         
         -- Rimuovo il record appena inserito
-        SET NEW.Paese = '??';
+        SET NEW.`Paese` = '??';
         LEAVE trigger_body;
     END IF;
 
     -- Se il record inserito "rompe" uno gia' presente, con meno piorita' si fa scadere quello gia' presente
-    UPDATE IPRange
-    SET IPRange.DataFine = NEW.DataInizio - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
+    UPDATE `IPRange`
+    SET `IPRange`.`DataFine` = NEW.`DataInizio` - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
     WHERE
-        IpRangeCollidono(NEW.Inizio, NEW.Fine, IPRange.Inizio, IPRange.Fine)  AND
-        IpRangeValidoInData(NEW.DataInizio, NEW.DataFine, IPRange.DataInizio)
-        IPRange.Paese <> '??';
+        IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, IPRange.`Inizio`, IPRange.`Fine`)  AND
+        IpRangeValidoInData(NEW.`DataInizio`, NEW.`DataFine`, IPRange.`DataInizio`) AND
+        IPRange.`Paese` <> '??';
     
 END ; $$
 
-------------------------------------------------------
+-- ----------------------------------------------------
 --
 --   Schedule event per eliminare IpRange invalidi
 --
-------------------------------------------------------
+-- ----------------------------------------------------
 
-CREATE EVENT IpRangeRimozioneErrori
+CREATE EVENT `IpRangeRimozioneErrori`
 ON SCHEDULE EVERY 1 DAY
-STARTS CURRENT_DATETIME
 DO
     DELETE 
-    FROM IPRange
-    WHERE IPRange.Paese = '??';
-END ; $$
+    FROM `IPRange`
+    WHERE `IPRange`.`Paese` = '??';
+$$
 
 DELIMITER ;

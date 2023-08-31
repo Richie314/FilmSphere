@@ -1,5 +1,7 @@
-CREATE DATABASE IF NOT EXISTS 'FilmSphere'
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; 
+CREATE DATABASE IF NOT EXISTS `FilmSphere`
+    CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; 
+
+USE `FilmSphere`;
 
 CREATE TABLE IF NOT EXISTS `Edizione` (
     -- Chiavi
@@ -16,7 +18,7 @@ CREATE TABLE IF NOT EXISTS `Edizione` (
     `Lunghezza` INT UNSIGNED NOT NULL DEFAULT 0,
 
     -- Rapporto d'aspetto, 16/9, 4/3, 1/1
-    `RapportoAspetto` FLOAT NOT NULL DEFAULT 16 / 9,
+    `RapportoAspetto` FLOAT NOT NULL DEFAULT 1.778,
 
     -- Vincolo referenziale
     FOREIGN KEY (`Film`) REFERENCES `Film`(`ID`) ON DELETE CASCADE ON UPDATE CASCADE,
@@ -120,7 +122,7 @@ BEFORE INSERT ON `File`
 FOR EACH ROW
 BEGIN
     IF EXISTS (
-        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`,
+        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`
         FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
         WHERE 
             `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
@@ -139,7 +141,7 @@ BEFORE UPDATE ON `File`
 FOR EACH ROW
 BEGIN
     IF EXISTS (
-        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`,
+        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`
         FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
         WHERE 
             `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
