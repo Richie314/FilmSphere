@@ -1,28 +1,26 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione3`;
-DELIMITER //
-CREATE PROCEDURE `Operazione3`(IN film_id INT)
-BEGIN
+DROP PROCEDURE IF EXISTS `FileMiglioreQualita`;
 
-    -- Decidiamo come gestire i pari merito
-    -- Decidiamo se "ritornare" una tabella o un valore in output
+DELIMITER $$
+
+CREATE PROCEDURE `FileMiglioreQualita`(IN film_id INT, OUT file_id INT)
+BEGIN
 
     WITH
         `FileRisoluzione` AS (
             SELECT `ID`, `Risoluzione`
             FROM `Edizione`
-            INNER JOIN `File`
-            ON `Edizione`.`ID` = `File`.`Edizione`
+                INNER JOIN `File` ON `Edizione`.`ID` = `File`.`Edizione`
             WHERE `Film` = film_id
         )
-    SELECT ID
-    FROM `FileRisoluzione`
+    SELECT f1.`ID` INTO file_id
+    FROM `FileRisoluzione` f1
     WHERE `Risoluzione` = (
-        SELECT MAX(`Risoluzione`) FROM `FileRisoluzione`
-    );
+        SELECT MAX(f2.`Risoluzione`) FROM `FileRisoluzione` f2
+    )
+    LIMIT 1;
 
-END
-//
+END ; $$
+
 DELIMITER ;
-
