@@ -1,18 +1,47 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione4`;
+DROP PROCEDURE IF EXISTS `FilmEsclusiAbbonamento`;
+
 DELIMITER //
-CREATE PROCEDURE `Operazione4`(IN tipo_abbonamento VARCHAR(50))
+
+CREATE PROCEDURE `FilmEsclusiAbbonamento`(
+    IN TipoAbbonamento VARCHAR(50),
+    OUT NumeroFilm INT)
 BEGIN
 
-    -- Decidiamo se "ritornare" una tabella o un valore in output
+    -- Film esclusi perche' il genere e' escluso
+    WITH `FilmEsclusiGenere` AS (
+        SELECT DISTINCT GF.`Film`
+        FROM `Esclusione` E
+            INNER JOIN `GenereFilm` GF USING(`Genere`)
+        WHERE E.`Abbonamento` = TipoAbbonamento
+    ), 
+    
+    -- La minor qualita' fruibile di un Film
+    `FilmMinimaRisouzione` AS (
+        SELECT `Film`.`ID`, MIN(F.Risoluzione) AS "Risoluzione"
+        FROM `File` F
+            INNER JOIN `Edizione` E ON F.`Edizione` = E.`ID`
+            INNER JOIN `Film` ON E.`Film` = `Film`.`ID`
+        GROUP BY `Film`.`ID`
+    ), 
+    
+    -- Film esclusi perche' presenti solo in qualita' maggiore dalla massima disponibile con l'abbonamento
+    `FilmEsclusiRisoluzione` AS (
+        SELECT F.`ID` AS "Film"
+        FROM `FilmMinimaRisoluzione` F
+            INNER JOIN `Abbonamento` A ON A.`Definizione` > F.`Risoluzione`
+        WHERE A.`Definizione` > 0 AND A.`Tipo` = TipoAbbonamento
+    )
+    -- UNION senza ALL rimuovera' in automatico gli ID duplicati
+    SELECT COUNT(*) INTO NumeroFilm
+    FROM (
+        SELECT * FROM `FilmEsclusiGenere`
 
-    SELECT COUNT(*)
-    FROM Esclusione E
-    INNER JOIN GenereFilm GF
-    ON GF.Genere = E.Genere
-    WHERE E.Abbonamento = tipo_abbonamento;
+        UNION
 
-END
-//
+        SELECT * FROM `FilmEsclusiRisoluzione`
+    );
+END ; //
+
 DELIMITER ;
