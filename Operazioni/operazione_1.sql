@@ -5,9 +5,16 @@ DELIMITER //
 CREATE PROCEDURE `Operazione1`(IN film_id INT)
 BEGIN
 
-    SELECT `Macrotipo`, `Microtipo`, `Data`
+    SELECT
+        GROUP_CONCAT(
+            `Macrotipo`, ' ',
+            `Microtipo`, ' ',
+            `Data`
+        ) AS ListaPremi,
+        COUNT(*) AS NumeroPremiVinti
     FROM `VincitaPremio`
-    WHERE `Film` = film_id;
+     WHERE `Film` = film_id
+    GROUP BY `Film`;
 
 END
 //

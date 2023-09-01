@@ -18,7 +18,7 @@ BEGIN
     ), 
     
     -- La minor qualita' fruibile di un Film
-    `FilmMinimaRisouzione` AS (
+    `FilmMinimaRisoluzione` AS (
         SELECT `Film`.`ID`, MIN(F.Risoluzione) AS "Risoluzione"
         FROM `File` F
             INNER JOIN `Edizione` E ON F.`Edizione` = E.`ID`
@@ -41,7 +41,7 @@ BEGIN
         UNION
 
         SELECT * FROM `FilmEsclusiRisoluzione`
-    );
+    ) ;
 END ; //
 
 DELIMITER ;

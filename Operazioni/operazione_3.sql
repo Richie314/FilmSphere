@@ -4,22 +4,36 @@ DROP PROCEDURE IF EXISTS `FileMiglioreQualita`;
 
 DELIMITER $$
 
-CREATE PROCEDURE `FileMiglioreQualita`(IN film_id INT, OUT file_id INT)
+CREATE PROCEDURE `FileMiglioreQualita`(IN film_id INT, IN codice_utente VARCHAR(100))
 BEGIN
+
+    DECLARE massima_risoluzione INT;
+    SET massima_risoluzione := (
+        SELECT
+            A.Definizione
+        FROM Abbonamento A
+        INNER JOIN Utente U
+        ON U.Abbonamento = A.Tipo
+        WHERE U.Codice = codice_utente
+    );
 
     WITH
         `FileRisoluzione` AS (
             SELECT `ID`, `Risoluzione`
             FROM `Edizione`
-                INNER JOIN `File` ON `Edizione`.`ID` = `File`.`Edizione`
+                INNER JOIN `File`
+                ON `Edizione`.`ID` = `File`.`Edizione`
             WHERE `Film` = film_id
+            AND `Risoluzione` <= massima_risoluzione
         )
-    SELECT f1.`ID` INTO file_id
-    FROM `FileRisoluzione` f1
+    SELECT
+        `ID`, `Risoluzione`
+    FROM `FileRisoluzione`
     WHERE `Risoluzione` = (
-        SELECT MAX(f2.`Risoluzione`) FROM `FileRisoluzione` f2
-    )
-    LIMIT 1;
+        SELECT
+            MAX(`Risoluzione`)
+        FROM `FileRisoluzione`
+    );
 
 END ; $$
 
