@@ -20,7 +20,9 @@ CREATE TABLE IF NOT EXISTS `Server` (
 
     -- Vincoli di dominio
     CHECK (`LunghezzaBanda` > 0.0),
-    CHECK (`MTU` > 0.0)
+    CHECK (`MTU` > 0.0),
+    CHECK (ST_X(`Posizione`) BETWEEN -180.00 AND 180.00), -- Contollo longitudine
+    CHECK (ST_Y(`Posizione`) BETWEEN -90.00 AND 90.00) -- Controllo latitudine
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `PoP` (
@@ -315,7 +317,6 @@ BEGIN
         '.',
         CONV(SUBSTR(HexStr, 7, 2), 16, 10) -- 7 and 8
     );
-
 END ; $$
 
 -- ----------------------------------------------------
