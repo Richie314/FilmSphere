@@ -126,7 +126,7 @@ CREATE PROCEDURE IF NOT EXISTS `MiglioreRegista`()
 BEGIN
 
     WITH
-        AttoreValutazione AS (
+        RegistaValutazione AS (
             SELECT
                 Nome, Cognome,
                 ValutazioneRegista(Nome, Cognome) AS Valutazione
@@ -135,10 +135,10 @@ BEGIN
         )
     SELECT
         Nome, Cognome
-    FROM AttoreValutazione
+    FROM RegistaValutazione
     WHERE Valutazione = (
         SELECT MAX(Valutazione)
-        FROM AttoreValutazione
+        FROM RegistaValutazione
     );
 
 END
