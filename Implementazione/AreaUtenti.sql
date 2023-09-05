@@ -168,6 +168,16 @@ CREATE TABLE IF NOT EXISTS `Fattura` (
     CHECK (`DataPagamento` >= `DataEmissione`)
 );
 
+CREATE TABLE IF NOT EXISTS `VisualizzazioniGiornaliere` (
+    `Film` INT NOT NULL,
+    `Data` DATE NOT NULL,
+    `NumeroVisualizzazioni` INT,
+    PRIMARY KEY (`Film`, `Data`),
+    FOREIGN KEY (`Film`) REFERENCES `Film` (`ID`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    CHECK (`NumeroVisualizzazioni` >= 0)
+);
+
 
 /*!SET SQL_MODE=@OLD_SQL_MODE*/;
 /*!SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS*/;
