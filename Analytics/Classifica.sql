@@ -23,7 +23,7 @@ BEGIN
                 INNER JOIN Edizione E
                     ON E.ID = V.Edizione
                 WHERE U.Abbonamento = tipo_abbonamento
-                AND GeolocalizzaIP(V.IP, V.InizioConnessione) = codice_paese
+                AND Ip2PaeseStorico(V.IP, V.InizioConnessione) = codice_paese
                 GROUP BY E.Film
             )
         SELECT
@@ -42,7 +42,7 @@ BEGIN
                 INNER JOIN Utente U
                     ON V.Utente = U.Codice
                 WHERE U.Abbonamento = tipo_abbonamento
-                AND GeolocalizzaIP(V.IP, V.InizioConnessione) = codice_paese
+                AND Ip2PaeseStorico(V.IP, V.InizioConnessione) = codice_paese
                 GROUP BY V.Edizione
             )
         SELECT
