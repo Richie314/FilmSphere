@@ -1,8 +1,8 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione6`;
+DROP PROCEDURE IF EXISTS `FilmPiuVistiRecentemente`;
 DELIMITER //
-CREATE PROCEDURE `Operazione6`(IN numero_film INT)
+CREATE PROCEDURE `FilmPiuVistiRecentemente`(IN numero_film INT)
 BEGIN
 
     WITH

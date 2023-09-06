@@ -1,8 +1,8 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione7`;
+    DROP PROCEDURE IF EXISTS `CambioAbbonamento`;
 DELIMITER //
-CREATE PROCEDURE `Operazione7`(IN codice_utente VARCHAR(100), IN tipo_abbonamento VARCHAR(50))
+CREATE PROCEDURE `CambioAbbonamento`(IN codice_utente VARCHAR(100), IN tipo_abbonamento VARCHAR(50))
 BEGIN
 
     DECLARE fatture_non_pagate INT;

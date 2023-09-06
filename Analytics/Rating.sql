@@ -1,11 +1,11 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `RatingFilm`;
+DROP FUNCTION IF EXISTS `RatingFilm`;
 DELIMITER //
-CREATE PROCEDURE `RatingFilm`(
-    IN id_film INT,
-    OUT rating FLOAT
+CREATE FUNCTION IF NOT EXISTS `RatingFilm`(
+    `id_film` INT
 )
+RETURNS FLOAT NOT DETERMINISTIC
 BEGIN
 
     DECLARE RU FLOAT;
@@ -67,8 +67,7 @@ BEGIN
         WHERE F1.ID = id_film
     );
 
-    SELECT FLOOR(0.5 * (RU + RC) + 0.1 * (PA + PR) + 0.1 * PV + (RU/RMU)) / 2
-    INTO rating;
+    RETURN FLOOR(0.5 * (RU + RC) + 0.1 * (PA + PR) + 0.1 * PV + (RU/RMU)) / 2;
 
 END
 //
