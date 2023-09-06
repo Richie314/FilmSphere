@@ -25,6 +25,10 @@ BEGIN
     DECLARE paese_utente CHAR(2) DEFAULT '??';
     DECLARE abbonamento_utente VARCHAR(50) DEFAULT NULL;
     DECLARE max_definizione BIGINT DEFAULT NULL;
+    DECLARE wRis FLOAT DEFAULT 5;
+    DECLARE wRate FLOAT DEFAULT 3;
+    DECLARE wPos FLOAT DEFAULT 12;
+    DECLARE wCarico FLOAT DEFAULT 10;
 
     IF id_utente IS NULL OR id_edizione IS NULL THEN
          SIGNAL SQLSTATE 45000 
@@ -88,8 +92,8 @@ BEGIN
             D.`Server`,
             MathMap(F.`DeltaRis`, 0.0, MAX_RIS, 0, wRis) AS "ScoreRis",
             MathMap(F.`DeltaRate`, 0.0, MAX_RATE, 0, wRate) AS "ScoreRate",
-            MathMap(D.`ValoreDistanza`, 0.0, MAX_DIST, 0, wDistanza) AS "ScoreDistanza",
-            MathMap(S.`CaricoAttuale`, 0.0, S.`MaxConnessioni`) AS "ScoreCarico"
+            MathMap(D.`ValoreDistanza`, 0.0, MAX_DIST, 0, wPos) AS "ScoreDistanza",
+            MathMap(S.`CaricoAttuale`, 0.0, S.`MaxConnessioni`, 0, wCarico) AS "ScoreCarico"
         FROM `FileDisponibili` F
             INNER JOIN `PoP` P ON P.`File` = F.`ID`
             INNER JOIN `DistanzaPrecalcolata` D USING(`Server`)
