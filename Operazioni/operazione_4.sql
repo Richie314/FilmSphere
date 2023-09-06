@@ -41,7 +41,7 @@ BEGIN
         UNION
 
         SELECT * FROM `FilmEsclusiRisoluzione`
-    ) ;
+    ) AS T;
 END ; //
 
 DELIMITER ;

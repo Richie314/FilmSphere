@@ -1,5 +1,8 @@
 USE `FilmSphere`;
 
+SET GLOBAL log_bin_trust_function_creators = 1;
+
+
 DROP FUNCTION IF EXISTS `RatingUtente`;
 DELIMITER //
 CREATE FUNCTION `RatingUtente`(

@@ -1,8 +1,8 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione2`;
+DROP PROCEDURE IF EXISTS `GeneriDiUnFilm`;
 DELIMITER //
-CREATE PROCEDURE `Operazione2`(IN film_id INT, IN codice_utente VARCHAR(100))
+CREATE PROCEDURE `GeneriDiUnFilm`(IN film_id INT, IN codice_utente VARCHAR(100))
 BEGIN
 
     DECLARE lista_generi VARCHAR(400);
@@ -37,5 +37,3 @@ BEGIN
 END
 //
 DELIMITER ;
-
-CALL Operazione1(1);

@@ -1,8 +1,8 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione5`;
+DROP PROCEDURE IF EXISTS `FilmDisponibiliInLinguaSpecifica`;
 DELIMITER //
-CREATE PROCEDURE `Operazione5`(IN lingua VARCHAR(50))
+CREATE PROCEDURE `FilmDisponibiliInLinguaSpecifica`(IN lingua VARCHAR(50))
 BEGIN
 
 

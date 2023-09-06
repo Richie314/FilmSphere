@@ -1,8 +1,8 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `Operazione1`;
+DROP PROCEDURE IF EXISTS `VinciteDiUnFilm`;
 DELIMITER //
-CREATE PROCEDURE `Operazione1`(IN film_id INT)
+CREATE PROCEDURE `VinciteDiUnFilm`(IN film_id INT)
 BEGIN
 
     SELECT
@@ -19,5 +19,3 @@ BEGIN
 END
 //
 DELIMITER ;
-
-CALL Operazione1(1);
