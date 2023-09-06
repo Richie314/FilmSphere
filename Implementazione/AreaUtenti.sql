@@ -102,7 +102,7 @@ DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `Connessione` (
 	`Utente` VARCHAR(100) NOT NULL,
-	`IP` INT(4) NOT NULL,
+	`IP` INT NOT NULL,
 	`Inizio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	`Hardware` VARCHAR(128),
@@ -118,7 +118,7 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     `Timestamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT(4) NOT NULL,
+    `IP` INT NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY(`Timestamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`),

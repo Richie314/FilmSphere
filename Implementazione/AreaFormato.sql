@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS `FormatoCodifica` (
     -- Massimo bitrate upportato dal metodo
     `MaxBitRate` FLOAT DEFAULT NULL,
 
-    PRIMARY KEY (`Famiglia`, `Versione`)
+    PRIMARY KEY (`Famiglia`, `Versione`),
+
+    CHECK (INSTR(`Famiglia`, ',') = 0)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `File` (

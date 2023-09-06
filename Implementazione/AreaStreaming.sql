@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     `TimeStamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT(4) NOT NULL,
+    `IP` INT NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Quando il Server ha iniziato a essere usato
@@ -204,8 +204,8 @@ DELIMITER ;
 CREATE TABLE IF NOT EXISTS `IPRange` (
 
     -- Range di IP4
-    `Inizio` INT(4) UNSIGNED NOT NULL,
-    `Fine` INT(4) UNSIGNED NOT NULL,
+    `Inizio` INT UNSIGNED NOT NULL,
+    `Fine` INT UNSIGNED NOT NULL,
 
     -- Inizio e fine validita'
     `DataInizio` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

@@ -10,7 +10,6 @@ CREATE PROCEDURE `MigliorServer` (
     IN id_utente VARCHAR(100),
     IN id_edizione INT,
     IN ip_connessione INT,
-    IN inizio_connessione TIMESTAMP,
     
     IN MaxBitRate FLOAT,
     IN MaxRisoluz BIGINT,
