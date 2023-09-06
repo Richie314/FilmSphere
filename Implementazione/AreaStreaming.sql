@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS `Server` (
     `ID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     
     `CaricoAttuale` INT NOT NULL DEFAULT 0,
+
+    `MaxConnessioni` INT NOT NULL DEFAULT 10000,
     
     -- Lunghezza massima della banda
     `LunghezzaBanda` FLOAT NOT NULL,
@@ -19,6 +21,7 @@ CREATE TABLE IF NOT EXISTS `Server` (
     `Posizione` POINT,
 
     -- Vincoli di dominio
+    CHECK (`MaxConnessioni` > 0),
     CHECK (`LunghezzaBanda` > 0.0),
     CHECK (`MTU` > 0.0),
     CHECK (ST_X(`Posizione`) BETWEEN -180.00 AND 180.00), -- Contollo longitudine
@@ -67,18 +70,23 @@ BEGIN
     (`Paese`, `Server`, `ValoreDistanza`)
         SELECT 
             `Paese`.`Codice`, `Server`.`ID`, 
-            ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+            IF (
+                `Paese`.`Codice` <> '??', 
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                0)      
         FROM `Paese` CROSS JOIN `Server`
         WHERE `Paese`.`Codice` = CodPaese;
 END ; $$
 
 CREATE PROCEDURE `CalcolaDistanzaServer` (IN IDServer INT)
 BEGIN
-    REPLACE INTO `DistanzaPrecalcolata` 
-    (`Paese`, `Server`, `ValoreDistanza`)
+    REPLACE INTO `DistanzaPrecalcolata` (`Paese`, `Server`, `ValoreDistanza`)
         SELECT 
-            `Paese`.`Codice`, `Server`.`ID`, 
-            ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+            `Paese`.`Codice`, `Server`.`ID`,
+            IF (
+                `Paese`.`Codice` <> '??', 
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                0)            
         FROM `Server` CROSS JOIN `Paese`
         WHERE `Server`.`ID` = IDServer;
 END ; $$
