@@ -120,6 +120,20 @@ BEGIN
     RETURN outMin + (outMax - outMin) * (x - inMin) / (inMax - inMin);
 END $$
 
+CREATE FUNCTION `CalcolaDelta`(
+    Max FLOAT,
+    Valore FLOAT
+)
+RETURNS FLOAT
+DETERMINISTIC
+BEGIN
+    RETURN IF (
+        Max > Valore,
+        Max - Valore,
+        2.0 * (Valore - Max)
+    );
+END $$
+
 CREATE FUNCTION `StrListContains` (
     `Pagliaio` VARCHAR(256)
     `Ago` VARCHAR(10)
