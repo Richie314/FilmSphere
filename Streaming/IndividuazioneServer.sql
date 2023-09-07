@@ -107,7 +107,7 @@ CREATE PROCEDURE `MigliorServer` (
             F.`ID`, f.`Server`,
             (F.ScoreRis + F.ScoreRate + F.ScoreDistanza + F.ScoreCarico) AS "Score"
         FROM `FileServerScore` F
-        ORDER BY "Score" DESC
+        ORDER BY "Score" ASC -- Minore e' lo Score migliore e' la scelta
         LIMIT 1
     )
     SELECT S.ID, F.Server INTO FileID, ServerID
