@@ -7,20 +7,24 @@ DROP FUNCTION IF EXISTS `StrListContains`;
 DELIMITER $$
 
 CREATE PROCEDURE `MigliorServer` (
-    IN id_utente VARCHAR(100),
-    IN id_edizione INT,
-    IN ip_connessione INT,
+
+    -- Dati sull'utente e la connessione
+    IN id_utente VARCHAR(100), -- Codice di Utente
+    IN id_edizione INT, -- ID di Edizione che si intende guardare
+    IN ip_connessione INT, -- Indirizzo IP4 della connessione
     
+    -- Dati su capacita' dispositivo client e potenza della sua connessione
     IN MaxBitRate FLOAT,
     IN MaxRisoluz BIGINT,
 
-    IN AcceptedVideoEncodings VARCHAR(256),
-    IN AcceptedAudioEncodings VARCHAR(256)
+    -- Liste di encoding video e audio supportati dal client, separati da ','
+    IN ListaVideoEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
+    IN ListaAudioEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
 
-    OUT FileID INT,
-    OUT ServerID INT
-)
-BEGIN
+    -- Parametri restituiti
+    OUT FileID INT, -- ID del File da guardare
+    OUT ServerID INT -- Server dove tale File e' presente
+) BEGIN
     DECLARE paese_utente CHAR(2) DEFAULT '??';
     DECLARE abbonamento_utente VARCHAR(50) DEFAULT NULL;
     DECLARE max_definizione BIGINT DEFAULT NULL;
@@ -83,15 +87,15 @@ BEGIN
             INNER JOIN Edizione E ON E.`ID` = F.`Edizione`
         WHERE 
             E.`ID` = id_edizione AND 
-            StrListContains(AcceptedAudioEncodings, F.`FamigliaAudio`) AND
-            StrListContains(AcceptedVideoEncodings, F.`FamigliaVideo`)
+            (ListaAudioEncodings IS NULL OR StrListContains(ListaAudioEncodings, F.`FamigliaAudio`)) AND
+            (ListaVideoEncodings IS NULL OR StrListContains(ListaVideoEncodings, F.`FamigliaVideo`))
     ), `FileServerScore` AS (
         SELECT 
             F.`ID`,
             D.`Server`,
             MathMap(F.`DeltaRis`, 0.0, MAX_RIS, 0, wRis) AS "ScoreRis",
             MathMap(F.`DeltaRate`, 0.0, MAX_RATE, 0, wRate) AS "ScoreRate",
-            MathMap(D.`ValoreDistanza`, 0.0, MAX_DIST, 0, wPos) AS "ScoreDistanza",
+            MathMap(D.`ValoreDistanza`, 0.0, 40000, 0, wPos) AS "ScoreDistanza",
             MathMap(S.`CaricoAttuale`, 0.0, S.`MaxConnessioni`, 0, wCarico) AS "ScoreCarico"
         FROM `FileDisponibili` F
             INNER JOIN `PoP` P ON P.`File` = F.`ID`
