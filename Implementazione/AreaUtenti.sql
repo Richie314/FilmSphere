@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS `Connessione` (
 	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	`Hardware` VARCHAR(128),
 
-	PRIMARY KEY(`Utente`, `IP`, `Inizio`),
+	PRIMARY KEY (`Utente`, `IP`, `Inizio`),
 	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
 	ON UPDATE CASCADE ON DELETE CASCADE,
 
@@ -126,7 +126,7 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`Edizione`) REFERENCES `Edizione` (`ID`)
       ON DELETE CASCADE ON UPDATE CASCADE
-) Engine = InnoDB;
+) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Abbonamento` (
     `Tipo` VARCHAR(50) NOT NULL PRIMARY KEY,

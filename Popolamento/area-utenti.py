@@ -28,6 +28,25 @@ domini_email = [
     'tiscali.it'
 ]
 
+user_agents = [
+    # Windows user agents
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.51",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/114.0",
+    "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36 OPR/95.0.0.0 (Edition Campaign 34)"
+    # Mac user agents
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Safari/605.1.1",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+    # Linux user agents
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/114.0",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/114.0",
+    "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/110.0",
+    "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+    # Chrome OS user agent
+    "Mozilla/5.0 (X11; CrOS x86_64 14541.0.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+]
+
 def next_line(file, rec=0):
     if rec > 5:
         raise Exception('Problema in lettura file!')
@@ -64,16 +83,25 @@ def data(min=None, max=None):
     if not min:
         return data(min=datetime.datetime.now(), max=max)
     if not max:
-        new_max = min + datetime.timedelta(days=random.randint(1, 100))
+        new_max = min + datetime.timedelta(days=random.randint(1, 101))
         return data(min=min, max=new_max)
-
+    
     delta = max - min
-    return min + datetime.timedelta(days=random.randint(1, delta.days))
+    days = random.randint(0, delta.days)
+    hours = random.randint(0, 23)
+    minutes = random.randint(0, 59)
+    seconds = random.randint(0, 59)
+    return min + datetime.timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
 
 def date_to_str(date):
     if not date:
         return ''
-    return str(date.year) + '-' + str(date.month) + '-' + str(date.day)
+    return str(date.year) + '-' + str(date.month).zfill(2) + '-' + str(date.day).zfill(2)
+
+def datetime_to_str(date):
+    if not date:
+        return ''
+    return date_to_str(date=date) + ' ' + str(date.hour).zfill(2) + ':' + str(date.minute).zfill(2) + ':' + str(date.second).zfill(2)
 
 def generate_single_fattura(user, pagata):
     if not pagata:
@@ -93,6 +121,17 @@ def generate_single_fattura(user, pagata):
     sql = '\tREPLACE INTO `CartaDiCredito` (`Pan`, `Scadenza`, `CVV`) VALUES (' + str(pan) + ', \'' + scadenza + '\', ' + str(cvv) + ');\n'
     sql += '\tINSERT INTO `Fattura` (`Utente`, `DataEmissione`, `DataPagamento`, `CartaDiCredito`) VALUES (\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + ');\n'
 
+    return sql
+def generate_connessione(user, add_vis=False):
+    sql = '\tREPLACE INTO `Connessione` (`Utente`, `IP`, `Inizio`, `Fine`, `Hardware`) VALUES '
+    ip = str(int.from_bytes(random.randbytes(4), 'big'))
+    inizio = data()
+    fine = datetime_to_str( data(min=inizio) )
+    inizio = datetime_to_str(inizio)
+    hw = random.choice(user_agents)
+    sql += '(\'' + user + '\', ' + ip + ', \'' + inizio + '\', \'' + fine + '\', \'' + hw +'\');\n'
+    if add_vis:
+        sql += '\tCALL `VisualizzazioneCasuale`(\'' + user + '\', ' + ip + ', \'' + inizio + '\');\n'
     return sql
 
 def generate_single_user(users, pws, nomi, cognomi):
@@ -116,11 +155,10 @@ def generate_single_user(users, pws, nomi, cognomi):
     for i in range(0, numero_recensioni):
         sql += 'CALL `RecensioneCasuale`(\'' + user + '\');\n'
 
-    # Connessioni
-
-
-    # Visualizzazioni
-
+    # Connessioni e Visualizzazioni
+    numero_connessioni = random.randint(0, 20)
+    for i in range(0, numero_connessioni):
+        sql += generate_connessione(user, numero_connessioni % 2 == 0)
 
     return sql
 
