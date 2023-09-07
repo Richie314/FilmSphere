@@ -1,10 +1,14 @@
 from Cryptodome.Hash import SHA224
 import random
 import string
+import datetime
 
 abbonamenti = [
-    '',
-    ''
+    'Basic',
+    'Premium',
+    'Pro',
+    'Deluxe',
+    'Ultimate'
 ]
 
 domini_email = [
@@ -54,20 +58,66 @@ def rand_email(user):
     return start + '@' + dominio
 def abbonamento():
     return random.choice(abbonamenti)
-def data():
-    return ''
+def data(min=None, max=None):
+    if not min:
+        return data(min=datetime.datetime.now(), max=max)
+    if not max:
+        new_max = min + datetime.timedelta(days=random.randint(1, 100))
+        return data(min=min, max=new_max)
 
-def generate_single(users, pws, nomi, cognomi):
-    sql = 'REPLACE INTO `Utente` (`Codice`, `Nome`, `Cognome`, `Email`, `Password`, `Abbonamento`, `DataInizioAbbonamento`) VALUES\n'
+    delta = max - min
+    return min + datetime.timedelta(days=random.randint(1, delta.days))
+
+def date_to_str(date):
+    if not date:
+        return ''
+    return str(date.year) + '-' + str(date.month) + '-' + str(date.day)
+
+def generate_single_fattura(user, pagata):
+    if not pagata:
+        return 'INSERT INTO `Fattura` (`Utente`, `DataEmissione`) VALUES (\'' + user + '\', \'' +  date_to_str(data()) + '\');\n'
+    
+    pan = ''.join(random.choices(population=string.digits, k=16))
+    cvv = random.randint(1, 999)
+    scadenza = data()
+
+    emissione = data(min=scadenza)
+    pagamento = data(min=scadenza, max=emissione)
+
+    scadenza = str(scadenza.year) + '-' + str(scadenza.month) + '-01'
+    emissione = date_to_str(emissione)
+    pagamento = date_to_str(pagamento)
+
+    sql = 'REPLACE INTO `CartaDiCredito` (`Pan`, `Scadenza`, `CVV`) VALUES (' + str(pan) + ', \'' + scadenza + '\', ' + str(cvv) + ');\n'
+    sql += 'INSERT INTO `Fattura` (`Utente`, `DataEmissione`, `DataPagamento`, `CartaDiCredito`) VALUES (\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + ');\n'
+
+    return sql
+
+def generate_single_user(users, pws, nomi, cognomi):
+    sql = 'INSERT INTO `Utente` (`Codice`, `Nome`, `Cognome`, `Email`, `Password`, `Abbonamento`, `DataInizioAbbonamento`) VALUES\n'
     user = next_line(users)
     email = rand_email(user=user)
     password = hash(next_line(pws))
     nome, cognome = next_nome_cognome(nomi, cognomi)
     abb = abbonamento()
-    iscrizione = data()
+    iscrizione = date_to_str(data())
     
     sql += '(\'' + user + '\', \'' + nome + '\', \'' + cognome + '\', \'' + email + '\', \'' + password + '\', \'' + abb + '\', \'' + iscrizione + '\');\n'
     
+    # Fatture e Pagamenti
+    numero_fatture = random.randint(1, 11)
+    for i in range(0, numero_fatture):
+        sql += generate_single_fattura(user, i < 10)
+
+    # Recensioni
+    numero_recensioni = random.randint(0, 2)
+    for i in range(0, numero_recensioni):
+        sql += 'CALL `RecensioneCasuale`(\'' + user + '\');\n'
+
+    # Connessioni
+
+
+    # Visualizzazioni
 
 
     return sql
@@ -75,19 +125,17 @@ def generate_single(users, pws, nomi, cognomi):
 def genera_abbonamenti():
     if len(abbonamenti) == 0:
         return ''
-    tipo = ''
-    tariffa = ''
-    durata = ''
-    definiz = ''
-    offline = ''
-    maxore = ''
-    gbmese = ''
     
     sql = 'REPLACE INTO `Abbonamento`(`Tipo`, `Tariffa`, `Durata`, `Definizione`, `Offline`, `MaxOre`, `GBMensili`) VALUES\n'
-    sql += '(\'' + tipo + '\', ' + tariffa + ', ' + durata + ', ' + definiz + ', ' + offline +', ' + maxore +', ' + gbmese + '),\n'
-    sql += '(\'' + tipo + '\', ' + tariffa + ', ' + durata + ', ' + definiz + ', ' + offline +', ' + maxore +', ' + gbmese + '),\n'
-    sql += '(\'' + tipo + '\', ' + tariffa + ', ' + durata + ', ' + definiz + ', ' + offline +', ' + maxore +', ' + gbmese + '),\n'
-    sql += '(\'' + tipo + '\', ' + tariffa + ', ' + durata + ', ' + definiz + ', ' + offline +', ' + maxore +', ' + gbmese + ');\n'
+    sql += '(\'Basic\', 5.99, 30, 1080, FALSE, 8, 32),\n'
+    sql += '(\'Premium\', 9.99, 30, 2160, FALSE, 8, 96),\n'
+    sql += '(\'Pro\', 13.49, 30, 4096, FALSE, 28, 0),\n'
+    sql += '(\'Deluxe\', 24.99, 60, 4096, FALSE, 28, 0),\n'
+    sql += '(\'Ultimate\', 39.99, 90, 16384, TRUE, 28, 0);\n\n'
+
+    basic_esclusioni = random.randint(6, 10)
+    for i in range(0, basic_esclusioni):
+        sql += 'CALL `EsclusioneCasuale`(\'Basic\');\n'
 
     return sql
 
@@ -106,7 +154,9 @@ def generate():
     
     for i in range(1, 1000000):
         comment = '-- ' + str(i) + '\n'
-        line = generate_single(usernames, passwords, nomi, cognomi)
+        # Uncomment to debug
+        # print(str(i) + '/1000000')
+        line = generate_single_user(usernames, passwords, nomi, cognomi)
         file_out.writelines([comment, line])
     
     usernames.close()

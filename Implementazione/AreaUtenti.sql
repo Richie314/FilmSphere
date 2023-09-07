@@ -36,9 +36,9 @@ CREATE TABLE IF NOT EXISTS `Recensione` (
 
 	PRIMARY KEY(`Film`, `Utente`),
 	FOREIGN KEY(`Film`) REFERENCES `Film` (`ID`)
-	ON UPDATE CASCADE ON DELETE CASCADE,
+		ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY(`Utente`) REFERENCES `Utente` (`Codice`)
-	ON UPDATE CASCADE ON DELETE CASCADE,
+		ON UPDATE CASCADE ON DELETE CASCADE,
 
 	CHECK(`Voto` BETWEEN 0.0 AND 5.0)
 ) Engine=InnoDB;
@@ -130,11 +130,11 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
 
 CREATE TABLE IF NOT EXISTS `Abbonamento` (
     `Tipo` VARCHAR(50) NOT NULL PRIMARY KEY,
-    `Tariffa` INT NOT NULL,
+    `Tariffa` FLOAT NOT NULL,
     `Durata` INT NOT NULL,
     `Definizione` BIGINT UNSIGNED NOT NULL DEFAULT 0,
     `Offline` BOOLEAN DEFAULT FALSE,
-    `MaxOre` INT DEFAULT 25,
+    `MaxOre` INT DEFAULT 28,
     `GBMensili` INT,
     CHECK (`Tariffa` >= 0),
     CHECK (`Durata` > 0),
@@ -161,10 +161,14 @@ CREATE TABLE IF NOT EXISTS `CartaDiCredito` (
 
 CREATE TABLE IF NOT EXISTS `Fattura` (
     `ID` INT NOT NULL PRIMARY KEY,
-    `Utente` VARCHAR(50) NOT NULL,
-    `DataEmissione` DATE,
+    `Utente` VARCHAR(100) NOT NULL,
+    `DataEmissione` DATE NOT NULL,
     `DataPagamento` DATE,
-    `CartaDiCredito` BIGINT NOT NULL,
+    `CartaDiCredito` BIGINT DEFAULT NULL,
+
+	FOREIGN KEY (`Utente`) REFERENCES `Utente`(`Codice`) ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (`CartaDiCredito`) REFERENCES `CartaDiCredito`(`PAN`) ON UPDATE CASCADE ON DELETE CASCADE,
+
     CHECK (`DataPagamento` >= `DataEmissione`)
 );
 
