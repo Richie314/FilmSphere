@@ -46,7 +46,7 @@ CREATE PROCEDURE `MigliorServer` (
     WHERE A.`Codice` = id_utente;
 
     IF abbonamento_utente IS NULL THEN
-         SIGNAL SQLSTATE 45000 
+         SIGNAL SQLSTATE '45000' 
             SET MESSAGE_TEXT = 'Utente non trovato';
     END IF;
 
@@ -57,7 +57,7 @@ CREATE PROCEDURE `MigliorServer` (
             INNER JOIN `Edizone` USING (`Film`)
         WHERE `ID` = id_edizione AND `Abbonamento` = abbonamento_utente) THEN
         
-        SIGNAL SQLSTATE 45000
+        SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Contenuto non disponibile nel tuo piano di abbonamento!';
     END IF;
 
@@ -69,13 +69,56 @@ CREATE PROCEDURE `MigliorServer` (
         FROM `Restrizione` r
         WHERE r.`Edizione` = id_edizione AND r.`Paese` = paese_utente) THEN
         
-        SIGNAL SQLSTATE 45000
+        SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'Contenuto non disponibile nella tua regione!';
     END IF;
 
+    CALL `TrovaMigliorServer` (
+        id_edizione, paese_utente, 
+        max_definizione, MaxBitRate, MaxRisoluz, 
+        ListaVideoEncodings, ListaAudioEncodings, NULL, @File, @Server, @Score);
+    SET FileID = @File;
+    SET ServerID = @Server;
+    -- @Score non viene restituito
+END $$
+
+CREATE PROCEDURE `TrovaMigliorServer` (
+
+    -- Dati sulla connessione
+    IN id_edizione INT, -- ID di Edizione che si intende guardare
+    IN paese_utente CHAR(2), -- Paese dell'Utente
+    IN MaxRisoluzAbbonamento BIGINT,
+    
+    -- Dati su capacita' dispositivo client e potenza della sua connessione
+    IN MaxBitRate FLOAT, -- NULL significa ricercare il minor BitRate possibile
+    IN MaxRisoluz BIGINT, -- NULL significa ricercare la minor Risoluzione possibile
+
+    -- Liste di encoding video e audio supportati dal client, separati da ','
+    IN ListaVideoEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
+    IN ListaAudioEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
+
+    IN ServerDaEscludere VARCHAR(32), -- Lista di ID di Server che per vari motivi vanno esclusi
+
+    -- Parametri restituiti
+    OUT FileID INT, -- ID del File da guardare
+    OUT ServerID INT, -- Server dove tale File e' presente
+    OUT Score INT -- Punteggio della scelta
+) BEGIN
+    DECLARE max_definizione BIGINT DEFAULT NULL;
+    DECLARE wRis FLOAT DEFAULT 5.0;
+    DECLARE wRate FLOAT DEFAULT 3.0;
+    DECLARE wPos FLOAT DEFAULT 12.0;
+    DECLARE wCarico FLOAT DEFAULT 10.0;
+
+    -- Calcolo il Paese dai Range
+    SET paese_utente = Ip2Paese(ip_connessione);
+
     -- Prima di calcolare il Server migliore individuo le caratteristiche che deve avere il File
-    IF max_definizione IS NOT NULL THEN
-        max_definizione = LEAST(max_definizione, MaxDefinizione);
+    
+    max_definizione = LEAST(MaxDefinizioneAbbonamento, MaxDefinizione);
+
+    IF max_definizione IS NULL OR max_definiz = 0 THEN
+        SET max_definizione = MaxDefinizione;
     END IF;
 
     WITH `FileDisponibili` AS (
@@ -89,6 +132,10 @@ CREATE PROCEDURE `MigliorServer` (
             E.`ID` = id_edizione AND 
             (ListaAudioEncodings IS NULL OR StrListContains(ListaAudioEncodings, F.`FamigliaAudio`)) AND
             (ListaVideoEncodings IS NULL OR StrListContains(ListaVideoEncodings, F.`FamigliaVideo`))
+    ), `ServerDisponibili` AS (
+        SELECT S.`ID`, s.`CaricoAttuale`, s.`MaxConnessioni`
+        FROM `Server` S
+        WHERE ServerDaEscludere IS NULL OR NOT StrListContains(ServerDaEscludere, S.`ID`)
     ), `FileServerScore` AS (
         SELECT 
             F.`ID`,
@@ -100,17 +147,17 @@ CREATE PROCEDURE `MigliorServer` (
         FROM `FileDisponibili` F
             INNER JOIN `PoP` P ON P.`File` = F.`ID`
             INNER JOIN `DistanzaPrecalcolata` D USING(`Server`)
-            INNER JOIN `Server` S ON `Server`.`ID` = P.`Server`
+            INNER JOIN `ServerDisponibili` S ON S.`ID` = P.`Server`
         WHERE D.`Paese` = paese_utente
     ), `Scelta` AS (
         SELECT 
-            F.`ID`, f.`Server`,
+            F.`ID`, F.`Server`,
             (F.ScoreRis + F.ScoreRate + F.ScoreDistanza + F.ScoreCarico) AS "Score"
         FROM `FileServerScore` F
         ORDER BY "Score" ASC -- Minore e' lo Score migliore e' la scelta
         LIMIT 1
     )
-    SELECT S.ID, F.Server INTO FileID, ServerID
+    SELECT S.`ID`, S.`Server`, S.`Score` INTO FileID, ServerID, Score
     FROM `Scelta` S;
 END $$
 
@@ -134,6 +181,10 @@ CREATE FUNCTION `CalcolaDelta`(
 RETURNS FLOAT
 DETERMINISTIC
 BEGIN
+    IF Max IS NULL THEN
+        RETURN `CalcolaDelta`(0, Valore);
+    END IF;
+
     RETURN IF (
         Max > Valore,
         Max - Valore,
@@ -157,17 +208,17 @@ BEGIN
             -- Ignoro gli spazi e il CASE della stringa: gli spazi creare dei falsi negativi, 
             -- mentre la stringa Ago potrebbe venire inviata con case dipendenti dalla piattaforma del client
             RETURN TRUE;
-        END IF;
-        
-        
+        END IF; 
         
         IF LOCATE(',', PagliaioRidotto) > 0 THEN
             SET PagliaioRidotto = SUBSTRING(PagliaioRidotto, LOCATE(',', PagliaioRidotto) + 1);
         ELSE
             SET PagliaioRidotto = '';
         END IF;
+        
     END WHILE;
 
     RETURNS FALSE;
 END $$
+
 DELIMITER ;
