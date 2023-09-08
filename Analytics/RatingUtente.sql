@@ -11,8 +11,6 @@ RETURNS FLOAT NOT DETERMINISTIC
     READS SQL DATA
 BEGIN
 
-    -- Forse si puo' migliorare con le Temporary Table
-
     DECLARE G1 VARCHAR(50);
     DECLARE G2 VARCHAR(50);
     DECLARE A1_Nome VARCHAR(50);

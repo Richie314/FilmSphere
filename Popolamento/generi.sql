@@ -1,5 +1,3 @@
-USE `FilmSphere`;
-
 INSERT INTO `Genere` (`Nome`) VALUES
 
 ('Cartoni Animati'),
