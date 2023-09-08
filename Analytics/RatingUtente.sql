@@ -1,7 +1,5 @@
 USE `FilmSphere`;
 
-SET GLOBAL log_bin_trust_function_creators = 1;
-
 
 DROP FUNCTION IF EXISTS `RatingUtente`;
 DELIMITER //
@@ -9,7 +7,8 @@ CREATE FUNCTION `RatingUtente`(
     id_film INT,
     id_utente VARCHAR(100)
 )
-RETURNS FLOAT DETERMINISTIC
+RETURNS FLOAT NOT DETERMINISTIC
+    READS SQL DATA
 BEGIN
 
     -- Forse si puo' migliorare con le Temporary Table
