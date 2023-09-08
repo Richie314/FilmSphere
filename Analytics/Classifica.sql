@@ -29,7 +29,8 @@ BEGIN
         SELECT
             Film
         FROM FilmVisualizzazioni
-        ORDER BY Visualizzazioni DESC;
+        ORDER BY Visualizzazioni DESC
+        LIMIT N;
 
     ELSEIF p = 2 THEN
 
@@ -48,7 +49,8 @@ BEGIN
         SELECT
             Edizione
         FROM FilmVisualizzazioni
-        ORDER BY Visualizzazioni DESC;
+        ORDER BY Visualizzazioni DESC
+        LIMIT N;
 
     ELSE
 
