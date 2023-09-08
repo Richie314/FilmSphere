@@ -4,7 +4,9 @@ CREATE FUNCTION `ValutazioneAttore`(
     Nome VARCHAR(50),
     Cognome VARCHAR(50)
     )
-RETURNS FLOAT DETERMINISTIC
+RETURNS FLOAT 
+NOT DETERMINISTIC
+READS SQL DATA
 BEGIN
 
     DECLARE sum_v FLOAT;
@@ -42,14 +44,13 @@ BEGIN
 
     RETURN sum_v + sum_p * 5 + n * 100.0;
 
-END
-//
+END //
 DELIMITER ;
 
 
 DROP PROCEDURE IF EXISTS `MiglioreAttore`;
 DELIMITER //
-CREATE PROCEDURE IF NOT EXISTS `MiglioreAttore`()
+CREATE PROCEDURE `MiglioreAttore`()
 BEGIN
 
     WITH
@@ -68,8 +69,7 @@ BEGIN
         FROM AttoreValutazione
     );
 
-END
-//
+END //
 DELIMITER ;
 
 
@@ -84,7 +84,9 @@ CREATE FUNCTION `ValutazioneRegista`(
     Nome VARCHAR(50),
     Cognome VARCHAR(50)
     )
-RETURNS FLOAT DETERMINISTIC
+RETURNS FLOAT 
+NOT DETERMINISTIC
+READS SQL DATA
 BEGIN
 
     DECLARE sum_v FLOAT;
@@ -122,7 +124,7 @@ DELIMITER ;
 
 DROP PROCEDURE IF EXISTS `MiglioreRegista`;
 DELIMITER //
-CREATE PROCEDURE IF NOT EXISTS `MiglioreRegista`()
+CREATE PROCEDURE `MiglioreRegista`()
 BEGIN
 
     WITH
@@ -141,6 +143,5 @@ BEGIN
         FROM RegistaValutazione
     );
 
-END
-//
+END //
 DELIMITER ;

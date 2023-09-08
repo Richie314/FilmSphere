@@ -4,3 +4,5 @@
 *.url
 *.csv
 *.txt
+*.xml
+*.iml

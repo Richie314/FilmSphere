@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS `Server` (
     `ID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     
     `CaricoAttuale` INT NOT NULL DEFAULT 0,
+
+    `MaxConnessioni` INT NOT NULL DEFAULT 10000,
     
     -- Lunghezza massima della banda
     `LunghezzaBanda` FLOAT NOT NULL,
@@ -19,6 +21,7 @@ CREATE TABLE IF NOT EXISTS `Server` (
     `Posizione` POINT,
 
     -- Vincoli di dominio
+    CHECK (`MaxConnessioni` > 0),
     CHECK (`LunghezzaBanda` > 0.0),
     CHECK (`MTU` > 0.0),
     CHECK (ST_X(`Posizione`) BETWEEN -180.00 AND 180.00), -- Contollo longitudine
@@ -67,18 +70,23 @@ BEGIN
     (`Paese`, `Server`, `ValoreDistanza`)
         SELECT 
             `Paese`.`Codice`, `Server`.`ID`, 
-            ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+            IF (
+                `Paese`.`Codice` <> '??', 
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                0)      
         FROM `Paese` CROSS JOIN `Server`
         WHERE `Paese`.`Codice` = CodPaese;
 END ; $$
 
 CREATE PROCEDURE `CalcolaDistanzaServer` (IN IDServer INT)
 BEGIN
-    REPLACE INTO `DistanzaPrecalcolata` 
-    (`Paese`, `Server`, `ValoreDistanza`)
+    REPLACE INTO `DistanzaPrecalcolata` (`Paese`, `Server`, `ValoreDistanza`)
         SELECT 
-            `Paese`.`Codice`, `Server`.`ID`, 
-            ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+            `Paese`.`Codice`, `Server`.`ID`,
+            IF (
+                `Paese`.`Codice` <> '??', 
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                0)            
         FROM `Server` CROSS JOIN `Paese`
         WHERE `Server`.`ID` = IDServer;
 END ; $$
@@ -122,7 +130,7 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     `TimeStamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT(4) NOT NULL,
+    `IP` INT NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Quando il Server ha iniziato a essere usato
@@ -196,8 +204,8 @@ DELIMITER ;
 CREATE TABLE IF NOT EXISTS `IPRange` (
 
     -- Range di IP4
-    `Inizio` INT(4) UNSIGNED NOT NULL,
-    `Fine` INT(4) UNSIGNED NOT NULL,
+    `Inizio` INT UNSIGNED NOT NULL,
+    `Fine` INT UNSIGNED NOT NULL,
 
     -- Inizio e fine validita'
     `DataInizio` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -274,10 +282,10 @@ BEGIN
 END ; $$
 
 CREATE FUNCTION Ip2Int(IP VARCHAR(15))
-RETURNS INT(4)
+RETURNS INT
 DETERMINISTIC
 BEGIN
-    DECLARE Int2Return INT(4) DEFAULT 0;
+    DECLARE Int2Return INT DEFAULT 0;
     DECLARE IP_Str VARCHAR(15) DEFAULT NULL; 
 
     IF NOT IpOk(IP) THEN
@@ -300,7 +308,7 @@ BEGIN
     RETURN Int2Return;
 END ; $$
 
-CREATE FUNCTION Int2Ip(IP INT(4))
+CREATE FUNCTION Int2Ip(IP INT)
 RETURNS VARCHAR(15)
 DETERMINISTIC
 BEGIN
@@ -326,8 +334,8 @@ END ; $$
 -- ----------------------------------------------------
 
 CREATE FUNCTION IpRangeCollidono(
-    Inizio1 VARCHAR(15), Fine1 VARCHAR(15), 
-    Inizio2 VARCHAR(15), Fine2 VARCHAR(15))
+    Inizio1 INT, Fine1 INT, 
+    Inizio2 INT, Fine2 INT)
 RETURNS BOOLEAN
 DETERMINISTIC
 BEGIN
@@ -363,11 +371,11 @@ BEGIN
 END ; $$
 
 CREATE FUNCTION IpAppartieneRangeInData(
-    Inizio INT(4),
-    Fine INT(4),
+    Inizio INT,
+    Fine INT,
     DataInizio TIMESTAMP,
     DataFine TIMESTAMP,
-    IP INT(4),
+    IP INT,
     DataDaControllare TIMESTAMP)
 RETURNS BOOLEAN
 DETERMINISTIC
@@ -376,7 +384,7 @@ BEGIN
         (IP BETWEEN Inizio AND Fine) AND IpRangeValidoInData(DataInizio, DataFine, DataDaControllare);
 END ; $$
 
-CREATE FUNCTION Ip2PaeseStorico(ip INT(4), DataDaControllare TIMESTAMP)
+CREATE FUNCTION Ip2PaeseStorico(ip INT, DataDaControllare TIMESTAMP)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA
@@ -403,7 +411,7 @@ BEGIN
     RETURN Codice;
 END ; $$
 
-CREATE FUNCTION Ip2Paese(ip INT(4))
+CREATE FUNCTION Ip2Paese(ip INT)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA
