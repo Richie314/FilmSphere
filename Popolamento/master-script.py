@@ -47,6 +47,7 @@ if __name__ == '__main__':
             'generi.sql',
             execute_script('area-contenuti'),
             execute_script('area-formato'),
+            'abbonamenti.sql',
             execute_script('area-utenti'),
             execute_script('area-streaming'),
             execute_script('ip-range')
@@ -58,6 +59,7 @@ if __name__ == '__main__':
             'generi.sql',
             execute_script('area-contenuti', percentage=percentage),
             execute_script('area-formato', percentage=percentage),
+            'abbonamenti.sql',
             execute_script('area-utenti', percentage=percentage),
             execute_script('area-streaming', percentage=percentage),
             execute_script('ip-range')
