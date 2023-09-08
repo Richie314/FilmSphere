@@ -63,7 +63,7 @@ BEGIN
         SELECT V.*, V.`TimeStamp`, `PoP`.`Server`
         FROM `VisualizzazioniInCorso` V
             INNER JOIN `File` F USING(`Edizione`)
-            INNER JOIN `PoP` ON `PoP`.`File` = `File`.`ID`
+            INNER JOIN `PoP` ON `PoP`.`File` = `File`.`ID`;
 END $$
 
 DELIMITER ;
