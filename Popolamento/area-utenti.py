@@ -103,9 +103,10 @@ def datetime_to_str(date):
         return ''
     return date_to_str(date=date) + ' ' + str(date.hour).zfill(2) + ':' + str(date.minute).zfill(2) + ':' + str(date.second).zfill(2)
 
-def generate_single_fattura(user, pagata):
+def generate_single_fattura(user, pagata, fatture_pagate, fatture_da_pagare, carte_di_credito):
     if not pagata:
-        return 'INSERT INTO `Fattura` (`Utente`, `DataEmissione`) VALUES (\'' + user + '\', \'' +  date_to_str(data()) + '\');\n'
+        with open(fatture_da_pagare, 'a') as file:
+            file.write('(\'' + user + '\', \'' +  date_to_str(data()) + '\'),\n')
     
     pan = ''.join(random.choices(population=string.digits, k=16))
     cvv = random.randint(1, 999)
@@ -117,11 +118,15 @@ def generate_single_fattura(user, pagata):
     scadenza = str(scadenza.year) + '-' + str(scadenza.month) + '-01'
     emissione = date_to_str(emissione)
     pagamento = date_to_str(pagamento)
-
-    sql = '\tREPLACE INTO `CartaDiCredito` (`Pan`, `Scadenza`, `CVV`) VALUES (' + str(pan) + ', \'' + scadenza + '\', ' + str(cvv) + ');\n'
-    sql += '\tINSERT INTO `Fattura` (`Utente`, `DataEmissione`, `DataPagamento`, `CartaDiCredito`) VALUES (\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + ');\n'
-
-    return sql
+    """
+    INSERT INTO `Fattura` (`Utente`, `DataEmissione`) VALUES\n'
+    REPLACE INTO `CartaDiCredito` (`Pan`, `Scadenza`, `CVV`) VALUES\n
+    INSERT INTO `Fattura` (`Utente`, `DataEmissione`, `DataPagamento`, `CartaDiCredito`) VALUES
+    """
+    with open(carte_di_credito, 'a') as file:
+        file.write('(' + str(pan) + ', \'' + scadenza + '\', ' + str(cvv) + '),\n')
+    with open(fatture_pagate, 'a') as file:
+        file.write('(\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + ');\n')
 def generate_connessione(user, add_vis=False):
     sql = '\tREPLACE INTO `Connessione` (`Utente`, `IP`, `Inizio`, `Fine`, `Hardware`) VALUES '
     ip = str(int.from_bytes(random.randbytes(4), 'big'))
