@@ -4,6 +4,7 @@ import string
 import datetime
 import sys
 from math import floor
+import os
 
 abbonamenti = [
     'Basic',
@@ -62,11 +63,8 @@ def next_nome_cognome(nomi, cognomi):
     nome = next_line(file=nomi)
     cognome = next_line(file=cognomi)
 
-    if nome[0] == '"':
-        nome = nome[1:-1]
-    
-    if cognome[0] == '"':
-        cognome = cognome[1:-1]
+    nome = nome.replace('\'', '').replace('"', '')
+    cognome = cognome.replace('\'', '').replace('"', '')
 
     return nome, cognome
 def hash(password):
@@ -115,32 +113,35 @@ def generate_single_fattura(user, pagata, fatture_pagate, fatture_da_pagare, car
     emissione = data(min=scadenza)
     pagamento = data(min=scadenza, max=emissione)
 
-    scadenza = str(scadenza.year) + '-' + str(scadenza.month) + '-01'
+    scadenza = str(scadenza.year) + '-' + str(scadenza.month).zfill(2) + '-01'
     emissione = date_to_str(emissione)
     pagamento = date_to_str(pagamento)
-    """
-    INSERT INTO `Fattura` (`Utente`, `DataEmissione`) VALUES\n'
-    REPLACE INTO `CartaDiCredito` (`Pan`, `Scadenza`, `CVV`) VALUES\n
-    INSERT INTO `Fattura` (`Utente`, `DataEmissione`, `DataPagamento`, `CartaDiCredito`) VALUES
-    """
+
     with open(carte_di_credito, 'a') as file:
-        file.write('(' + str(pan) + ', \'' + scadenza + '\', ' + str(cvv) + '),\n')
+        line = '(' + str(pan) + ', \'' + scadenza + '\', ' + str(cvv) + '),\n'
+        file.write(line)
     with open(fatture_pagate, 'a') as file:
-        file.write('(\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + ');\n')
-def generate_connessione(user, add_vis=False):
-    sql = '\tREPLACE INTO `Connessione` (`Utente`, `IP`, `Inizio`, `Fine`, `Hardware`) VALUES '
+        line = '(\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + ');\n'
+        file.write(line)
+def generate_connessione(user, connessione, visualizzazione, add_vis=False):
+
     ip = str(int.from_bytes(random.randbytes(4), 'big'))
     inizio = data()
     fine = datetime_to_str( data(min=inizio) )
     inizio = datetime_to_str(inizio)
     hw = random.choice(user_agents)
-    sql += '(\'' + user + '\', ' + ip + ', \'' + inizio + '\', \'' + fine + '\', \'' + hw +'\');\n'
+    with open(connessione, 'a') as file:
+        line = '(\'' + user + '\', ' + ip + ', \'' + inizio + '\', \'' + fine + '\', \'' + hw +'\'),\n'
+        file.write(line)
     if add_vis:
-        sql += '\tCALL `VisualizzazioneCasuale`(\'' + user + '\', ' + ip + ', \'' + inizio + '\');\n'
-    return sql
+        with open(visualizzazione, 'a') as file:
+            file.write('CALL `VisualizzazioneCasuale`(\'' + user + '\', ' + ip + ', \'' + inizio + '\');\n')
+    
 
-def generate_single_user(users, pws, nomi, cognomi):
-    sql = 'INSERT INTO `Utente` (`Codice`, `Nome`, `Cognome`, `Email`, `Password`, `Abbonamento`, `DataInizioAbbonamento`) VALUES\n'
+def generate_single_user(
+        users, pws, nomi, cognomi, 
+        fatture_pagate, fatture_non_pagate, carte_di_credito,
+        connessione, visualizzazione, recensione, is_last=False):
     user = next_line(users)
     email = rand_email(user=user)
     password = hash(next_line(pws))
@@ -148,42 +149,24 @@ def generate_single_user(users, pws, nomi, cognomi):
     abb = abbonamento()
     iscrizione = date_to_str(data())
     
-    sql += '(\'' + user + '\', \'' + nome + '\', \'' + cognome + '\', \'' + email + '\', \'' + password + '\', \'' + abb + '\', \'' + iscrizione + '\');\n'
+    sql = '(\'' + user + '\', \'' + nome + '\', \'' + cognome + '\', \'' + email + '\', \'' + password + '\', \'' + abb + '\', \'' + iscrizione + '\'),\n'
     
     # Fatture e Pagamenti
     numero_fatture = random.randint(1, 11)
     for i in range(0, numero_fatture):
-        sql += generate_single_fattura(user, i < 10)
+        generate_single_fattura(user, i < 10, fatture_pagate, fatture_non_pagate, carte_di_credito)
 
     # Recensioni
-    numero_recensioni = random.randint(0, 2)
-    for i in range(0, numero_recensioni):
-        sql += 'CALL `RecensioneCasuale`(\'' + user + '\');\n'
+    with open(recensione, 'a') as file:
+        numero_recensioni = random.randint(0, 2)
+        for i in range(0, numero_recensioni):
+            file.write('CALL `RecensioneCasuale`(\'' + user + '\');\n')
 
     # Connessioni e Visualizzazioni
     numero_connessioni = random.randint(0, 20)
     for i in range(0, numero_connessioni):
-        sql += generate_connessione(user, numero_connessioni % 2 == 0)
+        generate_connessione(user, connessione, visualizzazione, numero_connessioni % 2 == 0)
 
-    return sql
-
-def genera_abbonamenti():
-    if len(abbonamenti) == 0:
-        return ''
-    
-    sql = 'REPLACE INTO `Abbonamento`(`Tipo`, `Tariffa`, `Durata`, `Definizione`, `Offline`, `MaxOre`, `GBMensili`) VALUES\n'
-    sql += '(\'Basic\', 5.99, 30, 1080, FALSE, 8, 32),\n'
-    sql += '(\'Premium\', 9.99, 30, 2160, FALSE, 8, 96),\n'
-    sql += '(\'Pro\', 13.49, 30, 4096, FALSE, 28, 0),\n'
-    sql += '(\'Deluxe\', 24.99, 60, 4096, FALSE, 28, 0),\n'
-    sql += '(\'Ultimate\', 39.99, 90, 16384, TRUE, 28, 0);\n\n'
-
-    basic_esclusioni = random.randint(6, 10)
-    for i in range(0, basic_esclusioni):
-        sql += 'CALL `EsclusioneCasuale`(\'Basic\');\n'
-
-    sql += 'CALL `EsclusioneCasuale`(\'Premium\');\n'
-    sql += 'CALL `EsclusioneCasuale`(\'Premium\');\n'
     return sql
 
 def generate(number):
@@ -196,32 +179,79 @@ def generate(number):
     nomi = open('nomi.csv', 'r')
     cognomi = open('cognomi.csv', 'r')
 
-    file_out = open('area-utenti.sql', 'w')
-    file_out.write('USE `FilmSphere`;\n\n')
-    file_out.write('/*!SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0*/;\n')
-    file_out.write('/*!SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0*/;\n')
-    file_out.write('/*!SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE=\'STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION\'*/;\n\n')
-    
-    file_out.write(genera_abbonamenti())
+    fatture_p = 'fatture-pagate.sql'
+    fatture = 'fatture-non-pagate.sql'
+    carte = 'carte-di-credito.sql'
+    connessione = 'connessione.sql'
+    visualizzazione = 'visualizzazione.sql'
+    recensione = 'recensione.sql'
     
     checkpoint = floor(number / 100)
+    
+    with open(fatture_p, 'w') as file_temp:
+        file_temp.write('INSERT INTO `Fattura` (`Utente`, `DataEmissione`) VALUES\n')
 
+    with open(fatture, 'w') as file_temp:
+        file_temp.write('INSERT INTO `Fattura` (`Utente`, `DataEmissione`, `DataPagamento`, `CartaDiCredito`) VALUES\n')
+
+    with open(carte, 'w') as file_temp:
+        file_temp.write('REPLACE INTO `CartaDiCredito` (`Pan`, `Scadenza`, `CVV`) VALUES\n')
+
+    with open(connessione, 'w') as file_temp:
+        file_temp.write('REPLACE INTO `Connessione` (`Utente`, `IP`, `Inizio`, `Fine`, `Hardware`) VALUES\n')
+
+    open(visualizzazione, 'w').close()
+    open(recensione, 'w').close()
+    
+    file_out = open('area-utenti.sql', 'w')
+    
+    file_out.write('INSERT INTO `Utente` (`Codice`, `Nome`, `Cognome`, `Email`, `Password`, `Abbonamento`, `DataInizioAbbonamento`) VALUES\n')
+    
     for i in range(1, number):
-        comment = '-- ' + str(i) + '\n'
         if i % checkpoint == 0:
             print(str(floor(i / number * 100)) + '%\t' + str(i) + '/' + str(number))
-        line = generate_single_user(usernames, passwords, nomi, cognomi)
-        file_out.writelines([comment, line])
+        line = generate_single_user(
+            users=usernames, 
+            pws=passwords, 
+            nomi=nomi, 
+            cognomi=cognomi,
+            fatture_pagate=fatture_p,
+            fatture_non_pagate=fatture,
+            carte_di_credito=carte,
+            connessione=connessione,
+            visualizzazione=visualizzazione,
+            recensione=recensione)
+        if number == i + 1:
+            line = line[:-2] + ';\n'
+        file_out.write(line)
     
-    file_out.write('\n/*!SET SQL_MODE=@OLD_SQL_MODE*/;\n')
-    file_out.write('/*!SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS*/;\n')
-    file_out.write('/*!SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS*/;')
-    
-
     usernames.close()
     passwords.close()
     nomi.close()
     cognomi.close()
+    
+    with open(fatture_p, 'a') as file:
+        file.write('(\'john\', CURRENT_DATE, NULL, NULL);\n')
+    with open(fatture, 'a') as file:
+        file.write('(\'michael\', CURRENT_DATE);\n')
+    with open(connessione, 'a') as file:
+        file.write('(\'mike\', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, \'' + random.choice(user_agents) + '\');\n')
+
+    files_to_append = [
+        carte,
+        fatture,
+        fatture_p,
+        connessione,
+        visualizzazione,
+        recensione
+    ]
+    for file in files_to_append:
+        with open(file, 'r') as file_in:
+            file_out.write('\n\n\n')
+            for line in file_in:
+                file_out.write(line)
+        # Assets used are removed
+        os.remove(file)
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:
