@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS `Film` (
 CREATE TABLE IF NOT EXISTS `VincitaPremio` (
   `Macrotipo` VARCHAR(50) NOT NULL,
   `Microtipo` VARCHAR(50) NOT NULL,
-  `Data` DATE NOT NULL,
+  `Data` YEAR NOT NULL,
   `Film` INT NOT NULL,
   `NomeArtista` VARCHAR(50),
   `CognomeArtista` VARCHAR(50),
