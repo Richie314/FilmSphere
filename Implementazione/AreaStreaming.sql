@@ -1,7 +1,8 @@
-CREATE DATABASE IF NOT EXISTS `FilmSphere`
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; 
-
 USE `FilmSphere`;
+
+-- ----------------------------
+-- AREA STREAMING
+-- ----------------------------
 
 CREATE TABLE IF NOT EXISTS `Server` (
     -- Chiave

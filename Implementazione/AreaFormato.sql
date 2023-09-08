@@ -1,7 +1,8 @@
-CREATE DATABASE IF NOT EXISTS `FilmSphere`
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; 
-
 USE `FilmSphere`;
+
+-- ----------------------------
+-- AREA FORMATO
+-- ----------------------------
 
 CREATE TABLE IF NOT EXISTS `Edizione` (
     -- Chiavi
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS `FormatoCodifica` (
 
     PRIMARY KEY (`Famiglia`, `Versione`),
 
-    CHECK (INSTR(`Famiglia`, ',') = 0)
+    CHECK (INSTR(`Famiglia`, ',') = 0) -- Non puo' contenere virgole: saranno usate per concatenare i valori dal client
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `File` (
