@@ -38,4 +38,32 @@ BEGIN
         FROM `RandEdizione` E;
 END $$
 
+CREATE PROCEDURE `RandPoP`(IN server_id INT)
+BEGIN
+    REPLACE INTO `Pop` (`File`, `Server`)
+        WITH `RandFile` AS (
+            SELECT F.`ID`
+            FROM `File` F
+            ORDER BY RAND()
+            LIMIT 1
+        )
+        SELECT F.`ID`, server_id
+        FROM `RandFile` F;
+END $$
+
+CREATE PROCEDURE `AggiungiErogazioni`()
+BEGIN
+    REPLACE INTO `Erogazione` (`Timestamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`, `InizioErogazione`, `Server`)
+        WITH `VisualizzazioniInCorso` AS (
+            SELECT V.*
+            FROM `Visualizzazione` V
+                INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+            WHERE TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP, `Timestamp`) <= E.`Lunghezza`
+        )
+        SELECT V.*, V.`TimeStamp`, `PoP`.`Server`
+        FROM `VisualizzazioniInCorso` V
+            INNER JOIN `File` F USING(`Edizione`)
+            INNER JOIN `PoP` ON `PoP`.`File` = `File`.`ID`
+END $$
+
 DELIMITER ;
