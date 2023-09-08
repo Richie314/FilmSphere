@@ -1,7 +1,6 @@
 def generate():
-    with open('asn-country-ipv4.csv', 'r') as file_in, open('popola-ip-range.sql', 'w') as file_out:
-        sql = 'USE `FilmSphere`;\n'
-        sql += 'REPLACE INTO `IPRange` (`Paese`, `Inizio`, `Fine`) VALUES'
+    with open('asn-country-ipv4.csv', 'r') as file_in, open('ip-range.sql', 'w') as file_out:
+        sql = 'REPLACE INTO `IPRange` (`Paese`, `Inizio`, `Fine`) VALUES'
         old_line = ''
         file_out.write(sql)
         for line_in in file_in:
