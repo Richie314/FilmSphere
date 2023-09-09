@@ -1,9 +1,8 @@
 -- Procedure chiamate dagli scirpt di inserimento per inserire relazioni tra tabelle
 
-DROP PROCEDURE IF EXISTS `EsclusioneCasuale`;
-DROP PROCEDURE IF EXISTS `RecensioneCasuale`;
-
 DELIMITER $$
+
+DROP PROCEDURE IF EXISTS `EsclusioneCasuale` $$
 
 CREATE PROCEDURE `EsclusioneCasuale`(IN abb VARCHAR(50))
 BEGIN
@@ -14,6 +13,8 @@ BEGIN
         LIMIT 1;
 END $$
 
+DROP PROCEDURE IF EXISTS `RecensioneCasuale` $$
+
 CREATE PROCEDURE `RecensioneCasuale`(IN utente VARCHAR(100))
 BEGIN
     REPLACE INTO `Recensione` (`Film`, `Utente`, `Voto`)
@@ -22,6 +23,8 @@ BEGIN
         ORDER BY RAND()
         LIMIT 1;
 END $$
+
+DROP PROCEDURE IF EXISTS `VisualizzazioneCasuale` $$
 
 CREATE PROCEDURE `VisualizzazioneCasuale`(IN utente VARCHAR(100), IN ip INT, IN Inizio TIMESTAMP)
 BEGIN
@@ -36,6 +39,8 @@ BEGIN
         FROM `RandEdizione` E;
 END $$
 
+DROP PROCEDURE IF EXISTS `RandPoP` $$
+
 CREATE PROCEDURE `RandPoP`(IN server_id INT)
 BEGIN
     REPLACE INTO `Pop` (`File`, `Server`)
@@ -48,6 +53,8 @@ BEGIN
         SELECT F.`ID`, server_id
         FROM `RandFile` F;
 END $$
+
+DROP PROCEDURE IF EXISTS `AggiungiErogazioni` $$
 
 CREATE PROCEDURE `AggiungiErogazioni`()
 BEGIN
@@ -63,6 +70,8 @@ BEGIN
             INNER JOIN `File` F USING(`Edizione`)
             INNER JOIN `PoP` ON `PoP`.`File` = `File`.`ID`;
 END $$
+
+DROP PROCEDURE IF EXISTS `AggiungiGeneri` $$
 
 CREATE PROCEDURE `AggiungiGeneri`()
 BEGIN
