@@ -122,16 +122,19 @@ CREATE TRIGGER `InserimentoFile`
 BEFORE INSERT ON `File`
 FOR EACH ROW
 BEGIN
-    IF EXISTS (
-        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`
+    DECLARE valido INT;
+    SET valido = (
+        SELECT COUNT(*)
         FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
-        WHERE 
-            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
+        WHERE
+            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
-            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND 
-            `Video`.`Versione` = NEW.`VersioneVideo`
-        HAVING `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`) THEN
-        
+            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
+            `Video`.`Versione` = NEW.`VersioneVideo` AND
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+    );
+
+    IF valido = 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
@@ -141,16 +144,20 @@ CREATE TRIGGER `ModificaFile`
 BEFORE UPDATE ON `File`
 FOR EACH ROW
 BEGIN
-    IF EXISTS (
-        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`
+
+    DECLARE valido INT;
+    SET valido = (
+        SELECT COUNT(*)
         FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
-        WHERE 
-            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
+        WHERE
+            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
-            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND 
-            `Video`.`Versione` = NEW.`VersioneVideo`
-        HAVING `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`) THEN
-        
+            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
+            `Video`.`Versione` = NEW.`VersioneVideo` AND
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+    );
+
+    IF valido = 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;

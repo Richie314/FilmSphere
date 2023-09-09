@@ -248,44 +248,52 @@ CREATE TABLE IF NOT EXISTS Restrizione (
 DROP TRIGGER IF EXISTS `InserimentoFile`;
 DROP TRIGGER IF EXISTS `ModificaFile`;
 DELIMITER $$
-
 CREATE TRIGGER `InserimentoFile`
 BEFORE INSERT ON `File`
 FOR EACH ROW
 BEGIN
-    IF EXISTS (
-        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`
+    DECLARE valido INT;
+    SET valido = (
+        SELECT COUNT(*)
         FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
-        WHERE 
-            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
+        WHERE
+            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
-            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND 
-            `Video`.`Versione` = NEW.`VersioneVideo`
-        HAVING `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`) THEN
-        
+            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
+            `Video`.`Versione` = NEW.`VersioneVideo` AND
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+    );
+
+    IF valido = 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
 END ; $$
+
 
 CREATE TRIGGER `ModificaFile`
 BEFORE UPDATE ON `File`
 FOR EACH ROW
 BEGIN
-    IF EXISTS (
-        SELECT `Audio`.`MaxBitRate`, `Video`.`MaxBitRate`
+
+    DECLARE valido INT;
+    SET valido = (
+        SELECT COUNT(*)
         FROM `FormatoCodifica` AS `Audio`, `FormatoCodifica` AS `Video`
-        WHERE 
-            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND 
+        WHERE
+            `Audio`.`Famiglia` = NEW.`FamigliaAudio` AND
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
-            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND 
-            `Video`.`Versione` = NEW.`VersioneVideo`
-        HAVING `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`) THEN
-        
+            `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
+            `Video`.`Versione` = NEW.`VersioneVideo` AND
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+    );
+
+    IF valido = 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
 END ; $$
+
 
 DELIMITER ;
 
@@ -757,13 +765,13 @@ BEGIN
     SET Int2Return = CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED);
     SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 3);
 
-    SET Int2Return = IntToReturn + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 8;
+    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 8;
     SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 2);
 
-    SET Int2Return = IntToReturn + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 16;
+    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 16;
     SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 1);
 
-    SET Int2Return = IntToReturn + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 24;
+    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 24;
 
     RETURN Int2Return;
 END ; $$
