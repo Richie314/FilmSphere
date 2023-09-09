@@ -71,7 +71,7 @@ BEGIN
             `Paese`.`Codice`, `Server`.`ID`, 
             IF (
                 `Paese`.`Codice` <> '??', 
-                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000,
                 0)      
         FROM `Paese` CROSS JOIN `Server`
         WHERE `Paese`.`Codice` = CodPaese;
@@ -84,7 +84,7 @@ BEGIN
             `Paese`.`Codice`, `Server`.`ID`,
             IF (
                 `Paese`.`Codice` <> '??', 
-                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000,
                 0)            
         FROM `Server` CROSS JOIN `Paese`
         WHERE `Server`.`ID` = IDServer;

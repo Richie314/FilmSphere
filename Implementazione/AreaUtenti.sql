@@ -123,9 +123,9 @@ CREATE TABLE IF NOT EXISTS `Abbonamento` (
     `MaxOre` INT DEFAULT 28,
     `GBMensili` INT,
     CHECK (`Tariffa` >= 0),
-    CHECK (`Durata` > 0),
-    CHECK (`Definizione` > 0),
-    CHECK (`GBMensili` > 0)
+    CHECK (`Durata` >= 0),
+    CHECK (`Definizione` >= 0),
+    CHECK (`GBMensili` >= 0)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Esclusione` (

@@ -25,6 +25,7 @@ def append_to_bundle(append_to, append_what):
     with open(append_to, 'a') as file_out, open(append_what, 'r') as file_in:
         for line in file_in:
             file_out.write(line)
+        file_out.write('\n\n')
 
 def bundle_files(names, out_name):
     print('Genereting bundle \'' + out_name + '\'...')

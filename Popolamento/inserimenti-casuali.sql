@@ -35,7 +35,7 @@ BEGIN
             ORDER BY RAND()
             LIMIT 1
         )
-        SELECT inizio - INTERVAL E.`Delta` SECONDS, utente, ip, inizio, E.`ID`
+        SELECT TIMESTAMPADD(SECOND, E.`Delta` * (-1), inizio), utente, ip, inizio, E.`ID`
         FROM `RandEdizione` E;
 END $$
 
