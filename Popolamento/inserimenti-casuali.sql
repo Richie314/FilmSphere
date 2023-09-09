@@ -1,5 +1,3 @@
-USE `FilmSphere`;
-
 -- Procedure chiamate dagli scirpt di inserimento per inserire relazioni tra tabelle
 
 DROP PROCEDURE IF EXISTS `EsclusioneCasuale`;

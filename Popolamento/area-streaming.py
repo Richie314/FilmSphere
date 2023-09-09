@@ -18,7 +18,7 @@ def generate(number):
     total_rows = number + server_number
     checkpoint = floor(total_rows / 100)
     
-    file_out = open('Popolamento/area-streaming.sql', 'w')
+    file_out = open('area-streaming.sql', 'w')
     
     file_out.write('INSERT INTO `Server` (`MaxConnessioni`, `LunghezzaBanda`, `MTU`, `Posizione`) VALUES\n')
     

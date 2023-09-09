@@ -1,11 +1,3 @@
--- -----------------------------
--- CREAZIONE DATABASE
--- -----------------------------
-CREATE DATABASE IF NOT EXISTS `FilmSphere`
-  CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;          -- UNICODE UTF-8 USED (https://dev.mysql.com/doc/refman/8.0/en/charset.html)
-
-USE `FilmSphere`;
-
 -- ----------------------------
 -- AREA CONTENUTI
 -- ----------------------------
@@ -125,9 +117,3 @@ CREATE TABLE IF NOT EXISTS `GenereFilm` (
   FOREIGN KEY(`Genere`) REFERENCES `Genere` (`Nome`)
     ON UPDATE CASCADE ON DELETE CASCADE 
 ) Engine = InnoDB;
-
-
-/*!SET SQL_MODE=@OLD_SQL_MODE*/;
-/*!SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS*/;
-/*!SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS*/;
-

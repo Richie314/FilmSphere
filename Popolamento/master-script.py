@@ -17,7 +17,7 @@ def execute_script(name, percentage=None):
 def append_to_bundle(append_to, append_what):
     with open(append_to, 'a') as file_out, open(append_what, 'r') as file_in:
         for line in file_in:
-            file_out.write(line + '\n')
+            file_out.write(line)
 
 def bundle_files(names, out_name):
     print('Genereting bundle \'' + out_name + '\'...')
@@ -45,24 +45,28 @@ if __name__ == '__main__':
         file_names = [
             'inserimenti-casuali.sql',
             'generi.sql',
-            execute_script('area-contenuti'),
-            execute_script('area-formato'),
+            'lingue-paesi.sql',
+            'artisti-case-critici.sql',
+            execute_script('film'),
+            # execute_script('area-formato'),
             'abbonamenti.sql',
             execute_script('area-utenti'),
             execute_script('area-streaming'),
-            execute_script('ip-range')
+            execute_script('ip-ranges')
         ]
     else:
         percentage = float(sys.argv[1])
         file_names = [
             'inserimenti-casuali.sql',
             'generi.sql',
-            execute_script('area-contenuti', percentage=percentage),
-            execute_script('area-formato', percentage=percentage),
+            'lingue-paesi.sql',
+            'artisti-case-critici.sql',
+            execute_script('film', percentage=percentage),
+            # execute_script('area-formato', percentage=percentage),
             'abbonamenti.sql',
             execute_script('area-utenti', percentage=percentage),
             execute_script('area-streaming', percentage=percentage),
-            execute_script('ip-range')
+            execute_script('ip-ranges')
         ]
     out_name = 'FilmSphere.sql'
     bundle_files(names=file_names, out_name=out_name)

@@ -172,19 +172,19 @@ def generate_single_user(
 def generate(number):
     assert number != 0
     # https://github.com/danielmiessler/SecLists
-    usernames = open('Popolamento/user-names.txt', 'r')
-    passwords = open('Popolamento/passwords.txt', 'r')
+    usernames = open('user-names.txt', 'r')
+    passwords = open('passwords.txt', 'r')
 
     # https://github.com/filippotoso/nomi-cognomi-italiani/
-    nomi = open('Popolamento/nomi.csv', 'r')
-    cognomi = open('Popolamento/cognomi.csv', 'r')
+    nomi = open('nomi.csv', 'r')
+    cognomi = open('cognomi.csv', 'r')
 
-    fatture_p = 'Popolamento/fatture-pagate.sql'
-    fatture = 'Popolamento/fatture-non-pagate.sql'
-    carte = 'Popolamento/carte-di-credito.sql'
-    connessione = 'Popolamento/connessione.sql'
-    visualizzazione = 'Popolamento/visualizzazione.sql'
-    recensione = 'Popolamento/recensione.sql'
+    fatture_p = 'fatture-pagate.sql'
+    fatture = 'fatture-non-pagate.sql'
+    carte = 'carte-di-credito.sql'
+    connessione = 'connessione.sql'
+    visualizzazione = 'visualizzazione.sql'
+    recensione = 'recensione.sql'
     
     checkpoint = floor(number / 100)
     
@@ -203,7 +203,7 @@ def generate(number):
     open(visualizzazione, 'w').close()
     open(recensione, 'w').close()
     
-    file_out = open('Popolamento/area-utenti.sql', 'w')
+    file_out = open('area-utenti.sql', 'w')
     
     file_out.write('INSERT INTO `Utente` (`Codice`, `Nome`, `Cognome`, `Email`, `Password`, `Abbonamento`, `DataInizioAbbonamento`) VALUES\n')
     
