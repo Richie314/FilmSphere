@@ -1,13 +1,13 @@
 import sys
 import subprocess
+import os
 
-file_comment = """
-    -- File di popolamento fittizio per test su FilmSphere
-    -- Creato da Ciucci Riccardo e Gallo Simone
-
+file_comment = """-- File di popolamento fittizio per test su FilmSphere
+-- Creato da Ciucci Riccardo e Gallo Simone
 """
-
+script_outputs = []
 def execute_script(name, percentage=None):
+    global script_outputs
     if not name:
         return ''
     script_name = name + '.py'
@@ -18,6 +18,7 @@ def execute_script(name, percentage=None):
         cmd.append(str(percentage))
     code = subprocess.Popen(cmd).wait()
     print('\t\'' + script_name + '\' finished with code ' + str(code) + '.')
+    script_outputs.append(out_name)
     return out_name
 
 def append_to_bundle(append_to, append_what):
@@ -44,7 +45,11 @@ def bundle_files(names, out_name):
         file.write('\n/*!SET SQL_MODE=@OLD_SQL_MODE*/;\n')
         file.write('/*!SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS*/;\n')
         file.write('/*!SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS*/;')
-    print('Bundle \'' + out_name + '\' is ready!')
+    
+    print('\nRemoving last temporary files...')
+    for script_output in script_outputs:
+        os.remove(script_output)
+    print('\n\nBundle \'' + out_name + '\' is ready!')
     
 
 if __name__ == '__main__':
