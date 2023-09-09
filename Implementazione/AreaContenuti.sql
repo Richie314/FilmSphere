@@ -1,4 +1,15 @@
 -- ----------------------------
+-- CREAZIONE DB
+-- ----------------------------
+
+DROP DATABASE IF EXISTS `FilmSphere`;
+
+CREATE DATABASE `FilmSphere`
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;          -- UNICODE UTF-8 USED (https://dev.mysql.com/doc/refman/8.0/en/charset.html)
+
+USE `FilmSphere`;
+
+-- ----------------------------
 -- AREA CONTENUTI
 -- ----------------------------
 

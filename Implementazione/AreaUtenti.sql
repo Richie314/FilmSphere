@@ -1,5 +1,3 @@
-USE `FilmSphere`;
-
 -- ----------------------------
 -- AREA UTENTI
 -- ----------------------------
@@ -169,8 +167,3 @@ CREATE TABLE IF NOT EXISTS `VisualizzazioniGiornaliere` (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CHECK (`NumeroVisualizzazioni` >= 0)
 );
-
-
-/*!SET SQL_MODE=@OLD_SQL_MODE*/;
-/*!SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS*/;
-/*!SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS*/;
