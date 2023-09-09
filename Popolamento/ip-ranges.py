@@ -1,6 +1,6 @@
 def generate():
-    with open('asn-country-ipv4.csv', 'r') as file_in, open('ip-range.sql', 'w') as file_out:
-        sql = 'REPLACE INTO `IPRange` (`Paese`, `Inizio`, `Fine`) VALUES'
+    with open('asn-country-ipv4.csv', 'r') as file_in, open('ip-ranges.sql', 'w') as file_out:
+        sql = 'REPLACE INTO `IPRange` (`Paese`, `Inizio`, `Fine`) VALUES\n'
         old_line = ''
         file_out.write(sql)
         for line_in in file_in:

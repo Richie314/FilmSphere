@@ -1,7 +1,6 @@
-CREATE DATABASE IF NOT EXISTS `FilmSphere`
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; 
-
-USE `FilmSphere`;
+-- ----------------------------
+-- AREA STREAMING
+-- ----------------------------
 
 CREATE TABLE IF NOT EXISTS `Server` (
     -- Chiave
@@ -72,7 +71,7 @@ BEGIN
             `Paese`.`Codice`, `Server`.`ID`, 
             IF (
                 `Paese`.`Codice` <> '??', 
-                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000,
                 0)      
         FROM `Paese` CROSS JOIN `Server`
         WHERE `Paese`.`Codice` = CodPaese;
@@ -85,7 +84,7 @@ BEGIN
             `Paese`.`Codice`, `Server`.`ID`,
             IF (
                 `Paese`.`Codice` <> '??', 
-                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000
+                ST_DISTANCE_SPHERE(`Paese`.`Posizione`, `Server`.`Posizione`) / 1000,
                 0)            
         FROM `Server` CROSS JOIN `Paese`
         WHERE `Server`.`ID` = IDServer;
@@ -130,7 +129,7 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     `TimeStamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT NOT NULL,
+    `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Quando il Server ha iniziato a essere usato
@@ -282,10 +281,10 @@ BEGIN
 END ; $$
 
 CREATE FUNCTION Ip2Int(IP VARCHAR(15))
-RETURNS INT
+RETURNS INT UNSIGNED
 DETERMINISTIC
 BEGIN
-    DECLARE Int2Return INT DEFAULT 0;
+    DECLARE Int2Return INT UNSIGNED DEFAULT 0;
     DECLARE IP_Str VARCHAR(15) DEFAULT NULL; 
 
     IF NOT IpOk(IP) THEN
@@ -308,7 +307,7 @@ BEGIN
     RETURN Int2Return;
 END ; $$
 
-CREATE FUNCTION Int2Ip(IP INT)
+CREATE FUNCTION Int2Ip(IP INT UNSIGNED)
 RETURNS VARCHAR(15)
 DETERMINISTIC
 BEGIN
@@ -334,8 +333,8 @@ END ; $$
 -- ----------------------------------------------------
 
 CREATE FUNCTION IpRangeCollidono(
-    Inizio1 INT, Fine1 INT, 
-    Inizio2 INT, Fine2 INT)
+    Inizio1 INT UNSIGNED, Fine1 INT UNSIGNED, 
+    Inizio2 INT UNSIGNED, Fine2 INT UNSIGNED)
 RETURNS BOOLEAN
 DETERMINISTIC
 BEGIN
@@ -371,11 +370,11 @@ BEGIN
 END ; $$
 
 CREATE FUNCTION IpAppartieneRangeInData(
-    Inizio INT,
-    Fine INT,
+    Inizio INT UNSIGNED,
+    Fine INT UNSIGNED,
     DataInizio TIMESTAMP,
     DataFine TIMESTAMP,
-    IP INT,
+    IP INT UNSIGNED,
     DataDaControllare TIMESTAMP)
 RETURNS BOOLEAN
 DETERMINISTIC
@@ -384,7 +383,7 @@ BEGIN
         (IP BETWEEN Inizio AND Fine) AND IpRangeValidoInData(DataInizio, DataFine, DataDaControllare);
 END ; $$
 
-CREATE FUNCTION Ip2PaeseStorico(ip INT, DataDaControllare TIMESTAMP)
+CREATE FUNCTION Ip2PaeseStorico(ip INT UNSIGNED, DataDaControllare TIMESTAMP)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA
@@ -411,7 +410,7 @@ BEGIN
     RETURN Codice;
 END ; $$
 
-CREATE FUNCTION Ip2Paese(ip INT)
+CREATE FUNCTION Ip2Paese(ip INT UNSIGNED)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA

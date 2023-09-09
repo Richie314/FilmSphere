@@ -108,10 +108,10 @@ def generate_single_fattura(user, pagata, fatture_pagate, fatture_da_pagare, car
     
     pan = ''.join(random.choices(population=string.digits, k=16))
     cvv = random.randint(1, 999)
-    scadenza = data()
+    emissione = data()
+    scadenza = data(min=emissione)
 
-    emissione = data(min=scadenza)
-    pagamento = data(min=scadenza, max=emissione)
+    pagamento = data(min=emissione, max=scadenza)
 
     scadenza = str(scadenza.year) + '-' + str(scadenza.month).zfill(2) + '-01'
     emissione = date_to_str(emissione)
@@ -121,7 +121,7 @@ def generate_single_fattura(user, pagata, fatture_pagate, fatture_da_pagare, car
         line = '(' + str(pan) + ', \'' + scadenza + '\', ' + str(cvv) + '),\n'
         file.write(line)
     with open(fatture_pagate, 'a') as file:
-        line = '(\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + ');\n'
+        line = '(\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + '),\n'
         file.write(line)
 def generate_connessione(user, connessione, visualizzazione, add_vis=False):
 
@@ -141,8 +141,9 @@ def generate_connessione(user, connessione, visualizzazione, add_vis=False):
 def generate_single_user(
         users, pws, nomi, cognomi, 
         fatture_pagate, fatture_non_pagate, carte_di_credito,
-        connessione, visualizzazione, recensione, is_last=False):
-    user = next_line(users)
+        connessione, visualizzazione, recensione):
+    user = next_line(users).replace('\'', '').replace('"', '')
+    user = user + ''.join(random.choices(population=string.ascii_letters+string.digits,k=random.randint(1, 5)))
     email = rand_email(user=user)
     password = hash(next_line(pws))
     nome, cognome = next_nome_cognome(nomi, cognomi)
@@ -188,10 +189,10 @@ def generate(number):
     
     checkpoint = floor(number / 100)
     
-    with open(fatture_p, 'w') as file_temp:
+    with open(fatture, 'w') as file_temp:
         file_temp.write('INSERT INTO `Fattura` (`Utente`, `DataEmissione`) VALUES\n')
 
-    with open(fatture, 'w') as file_temp:
+    with open(fatture_p, 'w') as file_temp:
         file_temp.write('INSERT INTO `Fattura` (`Utente`, `DataEmissione`, `DataPagamento`, `CartaDiCredito`) VALUES\n')
 
     with open(carte, 'w') as file_temp:
@@ -221,22 +222,22 @@ def generate(number):
             connessione=connessione,
             visualizzazione=visualizzazione,
             recensione=recensione)
-        if number == i + 1:
-            line = line[:-2] + ';\n'
         file_out.write(line)
     
     usernames.close()
     passwords.close()
     nomi.close()
     cognomi.close()
+    file_out.write('(\'richi-314\', \'Nome\', \'Cognome\', \'email@prova.it\', \'hash\', \'Pro\', CURRENT_DATE);')
     
     with open(fatture_p, 'a') as file:
-        file.write('(\'john\', CURRENT_DATE, NULL, NULL);\n')
+        file.write('(\'richie-314\', CURRENT_DATE, NULL, NULL);\n')
     with open(fatture, 'a') as file:
-        file.write('(\'michael\', CURRENT_DATE);\n')
+        file.write('(\'richie-314\', CURRENT_DATE);\n')
     with open(connessione, 'a') as file:
-        file.write('(\'mike\', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, \'' + random.choice(user_agents) + '\');\n')
-
+        file.write('(\'richie-314\', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, \'' + random.choice(user_agents) + '\');\n')
+    with open(carte, 'a') as file:
+        file.write('(1, CURRENT_DATE, 314);\n\n')
     files_to_append = [
         carte,
         fatture,

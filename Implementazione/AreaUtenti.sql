@@ -1,19 +1,5 @@
-/*!SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0*/;
-/*!SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0*/;
-/*!SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'*/;
-
-CREATE DATABASE IF NOT EXISTS `FilmSphere`
-    CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci; 
-
-USE `FilmSphere`;
-
 -- ----------------------------
--- Formato
--- Contenuti
--- ----------------------------
-
--- ----------------------------
--- AREA UTENTE
+-- AREA UTENTI
 -- ----------------------------
 
 CREATE TABLE IF NOT EXISTS `Utente` (
@@ -102,10 +88,10 @@ DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `Connessione` (
 	`Utente` VARCHAR(100) NOT NULL,
-	`IP` INT NOT NULL,
+	`IP` INT UNSIGNED NOT NULL,
 	`Inizio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	`Hardware` VARCHAR(128),
+	`Hardware` VARCHAR(256),
 
 	PRIMARY KEY (`Utente`, `IP`, `Inizio`),
 	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
@@ -118,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     `Timestamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT NOT NULL,
+    `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY(`Timestamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`),
@@ -137,9 +123,9 @@ CREATE TABLE IF NOT EXISTS `Abbonamento` (
     `MaxOre` INT DEFAULT 28,
     `GBMensili` INT,
     CHECK (`Tariffa` >= 0),
-    CHECK (`Durata` > 0),
-    CHECK (`Definizione` > 0),
-    CHECK (`GBMensili` > 0)
+    CHECK (`Durata` >= 0),
+    CHECK (`Definizione` >= 0),
+    CHECK (`GBMensili` >= 0)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Esclusione` (
@@ -160,7 +146,7 @@ CREATE TABLE IF NOT EXISTS `CartaDiCredito` (
 );
 
 CREATE TABLE IF NOT EXISTS `Fattura` (
-    `ID` INT NOT NULL PRIMARY KEY,
+    `ID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `Utente` VARCHAR(100) NOT NULL,
     `DataEmissione` DATE NOT NULL,
     `DataPagamento` DATE,
@@ -181,8 +167,3 @@ CREATE TABLE IF NOT EXISTS `VisualizzazioniGiornaliere` (
         ON DELETE CASCADE ON UPDATE CASCADE,
     CHECK (`NumeroVisualizzazioni` >= 0)
 );
-
-
-/*!SET SQL_MODE=@OLD_SQL_MODE*/;
-/*!SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS*/;
-/*!SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS*/;

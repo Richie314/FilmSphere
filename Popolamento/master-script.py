@@ -1,7 +1,13 @@
 import sys
 import subprocess
+import os
 
+file_comment = """-- File di popolamento fittizio per test su FilmSphere
+-- Creato da Ciucci Riccardo e Gallo Simone
+"""
+script_outputs = []
 def execute_script(name, percentage=None):
+    global script_outputs
     if not name:
         return ''
     script_name = name + '.py'
@@ -12,17 +18,20 @@ def execute_script(name, percentage=None):
         cmd.append(str(percentage))
     code = subprocess.Popen(cmd).wait()
     print('\t\'' + script_name + '\' finished with code ' + str(code) + '.')
+    script_outputs.append(out_name)
     return out_name
 
 def append_to_bundle(append_to, append_what):
     with open(append_to, 'a') as file_out, open(append_what, 'r') as file_in:
         for line in file_in:
-            file_out.write(line + '\n')
+            file_out.write(line)
+        file_out.write('\n\n')
 
 def bundle_files(names, out_name):
     print('Genereting bundle \'' + out_name + '\'...')
     
     with open(out_name, 'w') as file:
+        file.write(file_comment + '\n')
         file.write('USE `FilmSphere`;\n\n')
         file.write('/*!SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0*/;\n')
         file.write('/*!SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0*/;\n')
@@ -37,7 +46,11 @@ def bundle_files(names, out_name):
         file.write('\n/*!SET SQL_MODE=@OLD_SQL_MODE*/;\n')
         file.write('/*!SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS*/;\n')
         file.write('/*!SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS*/;')
-    print('Bundle \'' + out_name + '\' is ready!')
+    
+    print('\nRemoving last temporary files...')
+    for script_output in script_outputs:
+        os.remove(script_output)
+    print('\n\nBundle \'' + out_name + '\' is ready!')
     
 
 if __name__ == '__main__':
@@ -45,24 +58,30 @@ if __name__ == '__main__':
         file_names = [
             'inserimenti-casuali.sql',
             'generi.sql',
-            execute_script('area-contenuti'),
-            execute_script('area-formato'),
+            'lingue-paesi.sql',
+            'artisti-case-critici.sql',
+            execute_script('film'),
+            'generifilm-critiche.sql',
+            # execute_script('area-formato'),
             'abbonamenti.sql',
             execute_script('area-utenti'),
             execute_script('area-streaming'),
-            execute_script('ip-range')
+            execute_script('ip-ranges')
         ]
     else:
         percentage = float(sys.argv[1])
         file_names = [
             'inserimenti-casuali.sql',
             'generi.sql',
-            execute_script('area-contenuti', percentage=percentage),
-            execute_script('area-formato', percentage=percentage),
+            'lingue-paesi.sql',
+            'artisti-case-critici.sql',
+            execute_script('film', percentage=percentage),
+            'generifilm-critiche.sql',
+            # execute_script('area-formato', percentage=percentage),
             'abbonamenti.sql',
             execute_script('area-utenti', percentage=percentage),
             execute_script('area-streaming', percentage=percentage),
-            execute_script('ip-range')
+            execute_script('ip-ranges')
         ]
     out_name = 'FilmSphere.sql'
     bundle_files(names=file_names, out_name=out_name)
