@@ -64,4 +64,31 @@ BEGIN
             INNER JOIN `PoP` ON `PoP`.`File` = `File`.`ID`;
 END $$
 
+CREATE PROCEDURE `AggiungiGeneri`()
+BEGIN
+    -- Viene fatto 2 volte perche' cosi' un Film ha in media 2 generi
+    REPLACE INTO `GenereFilm` (`Film`, `Genere`)
+        WITH `RandGenere` AS (
+            SELECT `Nome`
+            FROM `Genere`
+            ORDER BY RAND()
+            LIMIT 1
+        )
+        SELECT F.`ID`, G.`Nome`
+        FROM `Film` F
+            CROSS JOIN `RandGenere` G;
+
+    REPLACE INTO `GenereFilm` (`Film`, `Genere`)
+        WITH `RandGenere` AS (
+            SELECT `Nome`
+            FROM `Genere`
+            ORDER BY RAND()
+            LIMIT 1
+        )
+        SELECT F.`ID`, G.`Nome`
+        FROM `Film` F
+            CROSS JOIN `RandGenere` G;
+
+END $$
+
 DELIMITER ;

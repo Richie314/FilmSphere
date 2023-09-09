@@ -1,3 +1,5 @@
+CALL `AggiungiGeneri`();
+
 REPLACE INTO `Critica`(`Film`, `Critico`, `Testo`, `Data`, `Voto`) VALUES
 (19, 1, 'Mi aspettavo di vedere un film meraviglioso ma in realta ho assistito ad uno spettacolo mediocre', '2022-09-02', 1.3),
 (16, 2, 'Sicuramente un film pieno di pathos, passione e sentimento anche se scevro di una trama fondata', '2020-12-12', 2.7),
