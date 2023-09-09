@@ -379,10 +379,10 @@ DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `Connessione` (
 	`Utente` VARCHAR(100) NOT NULL,
-	`IP` INT NOT NULL,
+	`IP` INT UNSIGNED NOT NULL,
 	`Inizio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	`Hardware` VARCHAR(128),
+	`Hardware` VARCHAR(256),
 
 	PRIMARY KEY (`Utente`, `IP`, `Inizio`),
 	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
@@ -395,7 +395,7 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     `Timestamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT NOT NULL,
+    `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY(`Timestamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`),
@@ -437,7 +437,7 @@ CREATE TABLE IF NOT EXISTS `CartaDiCredito` (
 );
 
 CREATE TABLE IF NOT EXISTS `Fattura` (
-    `ID` INT NOT NULL PRIMARY KEY,
+    `ID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `Utente` VARCHAR(100) NOT NULL,
     `DataEmissione` DATE NOT NULL,
     `DataPagamento` DATE,
@@ -590,7 +590,7 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     `TimeStamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT NOT NULL,
+    `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     -- Quando il Server ha iniziato a essere usato
@@ -742,10 +742,10 @@ BEGIN
 END ; $$
 
 CREATE FUNCTION Ip2Int(IP VARCHAR(15))
-RETURNS INT
+RETURNS INT UNSIGNED
 DETERMINISTIC
 BEGIN
-    DECLARE Int2Return INT DEFAULT 0;
+    DECLARE Int2Return INT UNSIGNED DEFAULT 0;
     DECLARE IP_Str VARCHAR(15) DEFAULT NULL; 
 
     IF NOT IpOk(IP) THEN
@@ -768,7 +768,7 @@ BEGIN
     RETURN Int2Return;
 END ; $$
 
-CREATE FUNCTION Int2Ip(IP INT)
+CREATE FUNCTION Int2Ip(IP INT UNSIGNED)
 RETURNS VARCHAR(15)
 DETERMINISTIC
 BEGIN
@@ -794,8 +794,8 @@ END ; $$
 -- ----------------------------------------------------
 
 CREATE FUNCTION IpRangeCollidono(
-    Inizio1 INT, Fine1 INT, 
-    Inizio2 INT, Fine2 INT)
+    Inizio1 INT UNSIGNED, Fine1 INT UNSIGNED, 
+    Inizio2 INT UNSIGNED, Fine2 INT UNSIGNED)
 RETURNS BOOLEAN
 DETERMINISTIC
 BEGIN
@@ -831,11 +831,11 @@ BEGIN
 END ; $$
 
 CREATE FUNCTION IpAppartieneRangeInData(
-    Inizio INT,
-    Fine INT,
+    Inizio INT UNSIGNED,
+    Fine INT UNSIGNED,
     DataInizio TIMESTAMP,
     DataFine TIMESTAMP,
-    IP INT,
+    IP INT UNSIGNED,
     DataDaControllare TIMESTAMP)
 RETURNS BOOLEAN
 DETERMINISTIC
@@ -844,7 +844,7 @@ BEGIN
         (IP BETWEEN Inizio AND Fine) AND IpRangeValidoInData(DataInizio, DataFine, DataDaControllare);
 END ; $$
 
-CREATE FUNCTION Ip2PaeseStorico(ip INT, DataDaControllare TIMESTAMP)
+CREATE FUNCTION Ip2PaeseStorico(ip INT UNSIGNED, DataDaControllare TIMESTAMP)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA
@@ -871,7 +871,7 @@ BEGIN
     RETURN Codice;
 END ; $$
 
-CREATE FUNCTION Ip2Paese(ip INT)
+CREATE FUNCTION Ip2Paese(ip INT UNSIGNED)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA

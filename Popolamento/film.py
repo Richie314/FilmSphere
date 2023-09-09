@@ -538,7 +538,7 @@ def generate(number):
             out_attori.write(line_att)
             if line_premio:
                 out_premi.write(line_premio)
-        out_premi.write('(\'FilmSphere\', \'Primo Film inserito\', 1, YEAR(CURRENT_DATE), NULL, NULL);\n')
+        out_premi.write('(\'FilmSphere\', \'Primo Film inserito\', YEAR(CURRENT_DATE), 1, NULL, NULL);\n')
 
     # Concatenare i file
     with open('film.sql', 'a', encoding='utf-8') as file:

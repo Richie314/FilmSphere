@@ -18,15 +18,19 @@ DROP PROCEDURE IF EXISTS `RecensioneCasuale` $$
 CREATE PROCEDURE `RecensioneCasuale`(IN utente VARCHAR(100))
 BEGIN
     REPLACE INTO `Recensione` (`Film`, `Utente`, `Voto`)
-        SELECT `Film`.`ID`, utente, RAND() * 5
-        FROM `Film`
-        ORDER BY RAND()
-        LIMIT 1;
+        WITH `FilmCasuale` AS (
+            SELECT `Edizione`.`Film` AS "ID"
+            FROM `Edizione`
+            ORDER BY RAND()
+            LIMIT 1
+        )
+        SELECT F.`ID`, utente, RAND() * 5
+        FROM `FilmCasuale` F;
 END $$
 
 DROP PROCEDURE IF EXISTS `VisualizzazioneCasuale` $$
 
-CREATE PROCEDURE `VisualizzazioneCasuale`(IN utente VARCHAR(100), IN ip INT, IN Inizio TIMESTAMP)
+CREATE PROCEDURE `VisualizzazioneCasuale`(IN utente VARCHAR(100), IN ip INT UNSIGNED, IN Inizio TIMESTAMP)
 BEGIN
     REPLACE INTO `Visualizzazione` (`Timestamp`, `Utente`, `IP`, `InizioConnessione`, `Edizione`)
         WITH `RandEdizione` AS (

@@ -88,10 +88,10 @@ DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `Connessione` (
 	`Utente` VARCHAR(100) NOT NULL,
-	`IP` INT NOT NULL,
+	`IP` INT UNSIGNED NOT NULL,
 	`Inizio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	`Hardware` VARCHAR(128),
+	`Hardware` VARCHAR(256),
 
 	PRIMARY KEY (`Utente`, `IP`, `Inizio`),
 	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
@@ -104,7 +104,7 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     `Timestamp` TIMESTAMP NOT NULL,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
-    `IP` INT NOT NULL,
+    `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY(`Timestamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`),
@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS `CartaDiCredito` (
 );
 
 CREATE TABLE IF NOT EXISTS `Fattura` (
-    `ID` INT NOT NULL PRIMARY KEY,
+    `ID` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     `Utente` VARCHAR(100) NOT NULL,
     `DataEmissione` DATE NOT NULL,
     `DataPagamento` DATE,
