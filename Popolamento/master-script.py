@@ -1,6 +1,12 @@
 import sys
 import subprocess
 
+file_comment = """
+    -- File di popolamento fittizio per test su FilmSphere
+    -- Creato da Ciucci Riccardo e Gallo Simone
+
+"""
+
 def execute_script(name, percentage=None):
     if not name:
         return ''
@@ -23,6 +29,7 @@ def bundle_files(names, out_name):
     print('Genereting bundle \'' + out_name + '\'...')
     
     with open(out_name, 'w') as file:
+        file.write(file_comment + '\n')
         file.write('USE `FilmSphere`;\n\n')
         file.write('/*!SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0*/;\n')
         file.write('/*!SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0*/;\n')
