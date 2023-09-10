@@ -1,24 +1,15 @@
 def generate():
     with open('asn-country-ipv4.csv', 'r') as file_in, open('ip-ranges.sql', 'w') as file_out:
-        sql = 'REPLACE INTO `IPRange` (`Paese`, `Inizio`, `Fine`) VALUES\n'
-        old_line = ''
-        file_out.write(sql)
         for line_in in file_in:
             # Ip Start, Ip End, Country code
             ip_start, ip_end, country_code = line_in.split(',')
             ip_start = ip_start.strip()
             ip_end = ip_end.strip()
             country_code = country_code.strip()
-            # print(ip_start, ip_end, country_code)
             assert len(country_code) == 2
-            this_line = '(\'' + country_code.upper() + '\', Ip2Int(\'' + ip_start +'\'), Ip2Int(\'' + ip_end + '\'))'
-            if len(old_line) == 0:
-                # First time we write, no comma
-                old_line = '\n\t' + this_line
-            else:
-                old_line = ',\n\t' + this_line
-            file_out.write(old_line)
-        file_out.write(';\n')
+            country_code = country_code.upper()
+            line = f'CALL `IpRangeProvaInserireAdesso`(Ip2Int(\'{ip_start}\'), Ip2Int(\'{ip_end}\'), \'{country_code}\');\n'
+            file_out.write(line)
                 
 
 if __name__ == '__main__':
