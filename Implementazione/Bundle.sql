@@ -708,6 +708,10 @@ DROP FUNCTION IF EXISTS `Ip2Paese`;
 DROP FUNCTION IF EXISTS `Ip2PaeseStorico`;
 
 DROP FUNCTION IF EXISTS `IpRangePossoInserire`;
+
+DROP PROCEDURE IF EXISTS `IpRangeInserisciFidato`;
+DROP PROCEDURE IF EXISTS `IpRangeInserisciAdessoFidato`;
+
 DROP PROCEDURE IF EXISTS `IpRangeProvaInserire`;
 DROP PROCEDURE IF EXISTS `IpRangeProvaInserireAdesso`;
 
@@ -933,6 +937,30 @@ BEGIN
     RETURN TRUE;
 END ; $$
 
+-- Inserimento di range senza effettuare controlli
+
+CREATE PROCEDURE `IpRangeInserisciFidato` (
+    IN `NewInizio` INT UNSIGNED, IN `NewFine` INT UNSIGNED, 
+    IN `NewDataInizio` TIMESTAMP, IN `NewDataFine` TIMESTAMP, 
+    IN `NewPaese` CHAR(2), IN `InvalidaCollisioni` BOOLEAN
+)
+BEGIN
+    IF `InvalidaCollisioni` THEN
+        -- Se il record inserito "rompe" uno gia' presente, con meno piorita' si fa scadere quello gia' presente
+        UPDATE `IPRange`
+        SET `IPRange`.`DataFine` = `NewDataInizio` - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
+        WHERE
+            IpRangeCollidono(`NewInizio`, `NewFine`, `IPRange`.`Inizio`, `IPRange`.`Fine`)  AND
+            IpRangeValidoInData(`NewDataInizio`, `NewDataFine`, `IPRange`.`DataInizio`);
+    END IF;
+    
+    -- Inserisco essendo sicuro di aver mantenuto coerenza tra gli ip
+    INSERT INTO `IPRange` (`Inizio`, `Fine`, `DataInizio`, `DataFine`, `Paese`) VALUES
+    (`NewInizio`, `NewFine`, `NewDataInizio`, `NewDataFine`, `NewPaese`);
+END ; $$
+
+-- Inserisce solo se passa controlli
+
 CREATE PROCEDURE `IpRangeProvaInserire` (
     IN `NewInizio` INT UNSIGNED, IN `NewFine` INT UNSIGNED, 
     IN `NewDataInizio` TIMESTAMP, IN `NewDataFine` TIMESTAMP, 
@@ -965,23 +993,15 @@ insert_body:BEGIN
         LEAVE insert_body;
     END IF;
 
-    -- Controllo sugli altri range
-    IF NOT `IpRangePossoInserire` (`NewInizio`, `NewFine`, `NewDataInizio`, `NewPaese`) THEN
-        SIGNAL SQLSTATE '01000'
-            SET MESSAGE_TEXT = 'Ip Range collide con altri esistenti!';
-        LEAVE insert_body;
-    END IF;
+    CALL `IpRangeInserisciFidato`(`NewInizio`, `NewFine`, `NewDataInizio`, `NewDataFine`, `NewPaese`, TRUE);
+END ; $$
 
-    -- Se il record inserito "rompe" uno gia' presente, con meno piorita' si fa scadere quello gia' presente
-    UPDATE `IPRange`
-    SET `IPRange`.`DataFine` = `NewDataInizio` - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
-    WHERE
-        IpRangeCollidono(`NewInizio`, `NewFine`, `IPRange`.`Inizio`, `IPRange`.`Fine`)  AND
-        IpRangeValidoInData(`NewDataInizio`, `NewDataFine`, `IPRange`.`DataInizio`);
+-- Inserimenti di range validi dal momento stesso
 
-    -- Inserisco essendo sicuro di aver mantenuto coerenza tra gli ip
-    INSERT INTO `IPRange` (`Inizio`, `Fine`, `DataInizio`, `DataFine`, `Paese`) VALUES
-    (`NewInizio`, `NewFine`, `NewDataInizio`, `NewDataFine`, `NewPaese`);
+CREATE PROCEDURE `IpRangeInserisciAdessoFidato` (
+    IN `NewInizio` INT UNSIGNED, IN `NewFine` INT UNSIGNED, IN `NewPaese` CHAR(2), IN `InvalidaCollisioni` BOOLEAN)
+BEGIN
+    CALL `IpRangeInserisciFidato`(`NewInizio`, `NewFine`, CURRENT_TIMESTAMP, NULL, `NewPaese`, `InvalidaCollisioni`);
 END ; $$
 
 CREATE PROCEDURE `IpRangeProvaInserireAdesso` (
