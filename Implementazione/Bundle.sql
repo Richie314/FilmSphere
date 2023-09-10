@@ -248,6 +248,7 @@ CREATE TABLE IF NOT EXISTS Restrizione (
 DROP TRIGGER IF EXISTS `InserimentoFile`;
 DROP TRIGGER IF EXISTS `ModificaFile`;
 DELIMITER $$
+
 CREATE TRIGGER `InserimentoFile`
 BEFORE INSERT ON `File`
 FOR EACH ROW
@@ -261,15 +262,14 @@ BEGIN
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
             `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
             `Video`.`Versione` = NEW.`VersioneVideo` AND
-            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` <= NEW.`BitRate`
     );
 
-    IF valido = 0 THEN
+    IF valido > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
 END ; $$
-
 
 CREATE TRIGGER `ModificaFile`
 BEFORE UPDATE ON `File`
@@ -285,15 +285,14 @@ BEGIN
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
             `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
             `Video`.`Versione` = NEW.`VersioneVideo` AND
-            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` <= NEW.`BitRate`
     );
 
-    IF valido = 0 THEN
+    IF valido > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
 END ; $$
-
 
 DELIMITER ;
 
@@ -410,7 +409,9 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     FOREIGN KEY (`Utente`, `IP`, `InizioConnessione`) REFERENCES `Connessione` (`Utente`, `IP`, `Inizio`)
       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`Edizione`) REFERENCES `Edizione` (`ID`)
-      ON DELETE CASCADE ON UPDATE CASCADE
+      ON DELETE CASCADE ON UPDATE CASCADE,
+
+	CHECK (`Timestamp` >= `InizioConnessione`)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Abbonamento` (

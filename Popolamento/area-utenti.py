@@ -131,11 +131,11 @@ def generate_connessione(user, connessione, visualizzazione, add_vis=False):
     inizio = datetime_to_str(inizio)
     hw = random.choice(user_agents)
     with open(connessione, 'a') as file:
-        line = '(\'' + user + '\', ' + ip + ', \'' + inizio + '\', \'' + fine + '\', \'' + hw +'\'),\n'
+        line = f'(\'{user}\', {ip}, \'{inizio}\', \'{fine}\', \'{hw}\'),\n'
         file.write(line)
     if add_vis:
         with open(visualizzazione, 'a') as file:
-            file.write('CALL `VisualizzazioneCasuale`(\'' + user + '\', ' + ip + ', \'' + inizio + '\');\n')
+            file.write(f'CALL `VisualizzazioneCasuale`(\'{user}\', {ip}, \'{inizio}\');\n')
     
 
 def generate_single_user(
@@ -159,14 +159,13 @@ def generate_single_user(
 
     # Recensioni
     with open(recensione, 'a') as file:
-        numero_recensioni = random.randint(0, 2)
-        for i in range(0, numero_recensioni):
+        if random.randint(0, 10) > 9:
             file.write('CALL `RecensioneCasuale`(\'' + user + '\');\n')
 
     # Connessioni e Visualizzazioni
-    numero_connessioni = random.randint(0, 20)
+    numero_connessioni = random.randint(0, 10)
     for i in range(0, numero_connessioni):
-        generate_connessione(user, connessione, visualizzazione, numero_connessioni % 2 == 0)
+        generate_connessione(user, connessione, visualizzazione, random.randint(0, 7) % 2 == 0)
 
     return sql
 

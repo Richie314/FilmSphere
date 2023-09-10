@@ -111,7 +111,9 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     FOREIGN KEY (`Utente`, `IP`, `InizioConnessione`) REFERENCES `Connessione` (`Utente`, `IP`, `Inizio`)
       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`Edizione`) REFERENCES `Edizione` (`ID`)
-      ON DELETE CASCADE ON UPDATE CASCADE
+      ON DELETE CASCADE ON UPDATE CASCADE,
+
+	CHECK (`Timestamp` >= `InizioConnessione`)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Abbonamento` (

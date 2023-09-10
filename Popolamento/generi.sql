@@ -1,4 +1,4 @@
-INSERT INTO `Genere` (`Nome`) VALUES
+REPLACE INTO `Genere` (`Nome`) VALUES
 
 ('Cartoni Animati'),
 ('Anime'),
