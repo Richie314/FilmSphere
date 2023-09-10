@@ -30,7 +30,7 @@ BEGIN
     `FilmEsclusiRisoluzione` AS (
         SELECT F.`ID` AS "Film"
         FROM `FilmMinimaRisoluzione` F
-            INNER JOIN `Abbonamento` A ON A.`Definizione` > F.`Risoluzione`
+            INNER JOIN `Abbonamento` A ON A.`Definizione` < F.`Risoluzione`
         WHERE A.`Definizione` > 0 AND A.`Tipo` = TipoAbbonamento
     )
     -- UNION senza ALL rimuovera' in automatico gli ID duplicati

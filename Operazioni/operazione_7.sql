@@ -17,11 +17,13 @@ BEGIN
     IF fatture_non_pagate > 0 THEN
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'Utente non in pari coi pagamenti';
+
     ELSE
+
         UPDATE Utente
-        SET Abbonamento = tipo_abbonamento
-        AND DataInizioAbbonamento = CURRENT_DATE()
+        SET Abbonamento = tipo_abbonamento, DataInizioAbbonamento = CURRENT_DATE()
         WHERE Codice = codice_utente;
+
     END IF;
 
 END

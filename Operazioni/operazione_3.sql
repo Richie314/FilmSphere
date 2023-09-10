@@ -19,7 +19,7 @@ BEGIN
 
     WITH
         `FileRisoluzione` AS (
-            SELECT `ID`, `Risoluzione`
+            SELECT `File`.`ID`, `Risoluzione`
             FROM `Edizione`
                 INNER JOIN `File`
                 ON `Edizione`.`ID` = `File`.`Edizione`

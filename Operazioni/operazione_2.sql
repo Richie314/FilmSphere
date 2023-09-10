@@ -24,16 +24,16 @@ BEGIN
         USING(Genere)
         INNER JOIN Utente U
         USING (Abbonamento)
-        WHERE U.Codice = Codice
+        WHERE U.Codice = codice_utente
         AND GF.Film = film_id
     );
+
 
     IF generi_disabilitati > 0 THEN
         SELECT lista_generi, 'Non Abilitato' AS Abilitazione;
     ELSE
         SELECT lista_generi, 'Abilitato' AS Abilitazione;
     END IF;
-
 END
 //
 DELIMITER ;
