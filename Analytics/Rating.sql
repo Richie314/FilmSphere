@@ -6,6 +6,7 @@ CREATE FUNCTION IF NOT EXISTS `RatingFilm`(
     `id_film` INT
 )
 RETURNS FLOAT NOT DETERMINISTIC
+    READS SQL DATA
 BEGIN
 
     DECLARE RU FLOAT;
@@ -17,21 +18,21 @@ BEGIN
 
     SET RU := (
         SELECT
-            MediaRecensioni
+            IFNULL(MediaRecensioni, 0)
         FROM Film
         WHERE ID = id_film
     );
 
     SET RC := (
         SELECT
-            AVG(Voto)
+            IFNULL(AVG(Voto), 0)
         FROM Critica
         WHERE Film = id_film
     );
 
     SET PA := (
         SELECT
-            AVG(Popolarita)
+            IFNULL(AVG(Popolarita), 0)
         FROM Artista A
         INNER JOIN Recitazione R
         ON A.Nome = R.NomeAttore AND A.Cognome = R.CognomeAttore
@@ -40,7 +41,7 @@ BEGIN
 
     SET PR := (
         SELECT
-            Popolarita
+            IFNULL(Popolarita, 0)
         FROM Artista A
         INNER JOIN Film F
         ON F.NomeRegista = A.Nome AND F.CognomeRegista = A.Cognome
@@ -56,7 +57,7 @@ BEGIN
 
     SET RMU := (
         SELECT
-            MAX(F2.MediaRecensioni)
+            IFNULL(MAX(F2.MediaRecensioni), 0)
         FROM Film F1
         INNER JOIN GenereFilm GF1
         ON GF1.Film = F1.ID

@@ -42,7 +42,8 @@ BEGIN
     -- L'idea e' di creare delle classifica come Temporary Table
     -- per poi andare a selezionare l'i-esimo preferito
 
-    CREATE TEMPORARY TABLE GeneriClassifica
+    DROP TEMPORARY TABLE IF EXISTS GeneriClassifica;
+    CREATE TEMPORARY TABLE IF NOT EXISTS GeneriClassifica
     WITH
         GenereVisualizzazioni AS (
             SELECT
@@ -75,7 +76,9 @@ BEGIN
         WHERE rk = 2
     );
 
-    CREATE TEMPORARY TABLE AttoriClassifica
+
+    DROP TEMPORARY TABLE IF EXISTS AttoriClassifica;
+    CREATE TEMPORARY TABLE IF NOT EXISTS AttoriClassifica
         WITH
             AttoriVisualizzazioni AS (
                 SELECT
@@ -137,7 +140,8 @@ BEGIN
         WHERE rk = 3
     );
 
-    CREATE TEMPORARY TABLE LinguaClassifica
+    DROP TEMPORARY TABLE IF EXISTS LinguaClassifica;
+    CREATE TEMPORARY TABLE IF NOT EXISTS LinguaClassifica
         WITH
             LinguaVisualizzazioni AS (
                 SELECT
@@ -170,7 +174,8 @@ BEGIN
         WHERE rk = 2
     );
 
-    CREATE TEMPORARY TABLE RegistaUtente
+    DROP TEMPORARY TABLE IF EXISTS RegistaUtente;
+    CREATE TEMPORARY TABLE IF NOT EXISTS RegistaUtente
         WITH
             RegistaVisualizzazioni AS (
                 SELECT
@@ -229,19 +234,22 @@ BEGIN
     -- L'idea e' di creare delle Temporay Table contenente i vari parametri di interesse del
     -- film (e.g. Generi) per poi andare a determinare quali preferenze sono soddisfatte
 
-    CREATE TEMPORARY TABLE GeneriFilm
+    DROP TEMPORARY TABLE IF EXISTS GeneriFilm;
+    CREATE TEMPORARY TABLE IF NOT EXISTS GeneriFilm
         SELECT Genere
         FROM GenereFilm
         WHERE Film = id_film;
 
-    CREATE TEMPORARY TABLE AttoriFilm
+    DROP TEMPORARY TABLE IF EXISTS AttoriFilm;
+    CREATE TEMPORARY TABLE IF NOT EXISTS AttoriFilm
         SELECT
             NomeAttore,
             CognomeAttore
         FROM Recitazione
         WHERE Film = id_film;
 
-    CREATE TEMPORARY TABLE LingueFilm
+    DROP TEMPORARY TABLE IF EXISTS LingueFilm;
+    CREATE TEMPORARY TABLE IF NOT EXISTS LingueFilm
         SELECT DISTINCT
             D.Lingua
         FROM Edizione E
@@ -311,6 +319,7 @@ BEGIN
                 RapportoAspetto
             FROM Edizione
             WHERE Film = id_film
+            AND RapportoAspetto = RA
         ) AS T
     );
 

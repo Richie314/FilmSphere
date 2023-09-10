@@ -56,7 +56,7 @@ DROP PROCEDURE IF EXISTS `RandPoP` $$
 
 CREATE PROCEDURE `RandPoP`(IN server_id INT)
 BEGIN
-    REPLACE INTO `Pop` (`File`, `Server`)
+    REPLACE INTO `PoP` (`File`, `Server`)
         WITH `RandFile` AS (
             SELECT F.`ID`
             FROM `File` F
