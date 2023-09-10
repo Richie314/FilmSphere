@@ -126,24 +126,24 @@ DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `Erogazione` (
     -- Uguali a Visualizzazione
-    `TimeStamp` TIMESTAMP NOT NULL,
+    `TimeStamp` TIMESTAMP,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
     `IP` INT UNSIGNED NOT NULL,
-    `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `InizioConnessione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Quando il Server ha iniziato a essere usato
-    `InizioErogazione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `InizioErogazione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Il Server in uso
     `Server` INT NOT NULL,
 
     -- Chiavi
-    PRIMARY KEY (`TimeStamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`),
-    FOREIGN KEY (`TimeStamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`)
-        REFERENCES `Visualizzazione`(`TimeStamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`) 
+    PRIMARY KEY (`IP`, `InizioConnessione`, `Utente`, `Edizione`, `Timestamp`),
+    FOREIGN KEY (`IP`, `InizioConnessione`, `Utente`, `Edizione`, `Timestamp`)
+        REFERENCES `Visualizzazione`(`IP`, `InizioConnessione`, `Utente`, `Edizione`, `Timestamp`) 
         ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (`Server`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE
+    FOREIGN KEY (`Server`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE,
 
     -- Vincoli di dominio
     CHECK (`TimeStamp` BETWEEN `InizioConnessione` AND `InizioErogazione`)
@@ -225,11 +225,6 @@ CREATE TABLE IF NOT EXISTS `IPRange` (
 
 -- Rimuovo funzioni, trigger e schedule prima di riaggiungerli
 
-DROP FUNCTION IF EXISTS `Ip2Int`;
-DROP FUNCTION IF EXISTS `LocalHostIpParse`;
-DROP FUNCTION IF EXISTS `IpOk`;
-DROP FUNCTION IF EXISTS `Int2Ip`;
-
 DROP FUNCTION IF EXISTS `IpRangeCollidono`;
 DROP FUNCTION IF EXISTS `IpRangeValidoInData`;
 DROP FUNCTION IF EXISTS `IpAppartieneRangeInData`;
@@ -248,88 +243,6 @@ DROP PROCEDURE IF EXISTS `IpRangeProvaInserireAdesso`;
 DROP TRIGGER IF EXISTS `IpRangeControlloAggiornamento`;
 
 DELIMITER $$
-
--- ----------------------------------------------------
---
---           Funzioni di utilita' sugli IP4
---
--- ----------------------------------------------------
-
-
-CREATE FUNCTION `LocalHostIpParse`(IP VARCHAR(15))
-RETURNS VARCHAR(15)
-DETERMINISTIC
-BEGIN
-
-    IF LOWER(IP) = 'localhost' OR IP = '0' OR IP = '0.0.0.0' THEN
-        -- Localchost ip
-        RETURN '127.0.0.1';
-    END IF;
-
-    RETURN IP;
-END ; $$
-
-CREATE FUNCTION `IpOk`(IP VARCHAR(15))
-RETURNS BOOLEAN
-DETERMINISTIC
-BEGIN
-    DECLARE IpParsed VARCHAR(15) DEFAULT NULL;
-    DECLARE regex_base CHAR(38) DEFAULT '(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])';
-    
-    IF IP IS NULL THEN
-        RETURN FALSE;
-    END IF;
-
-    SET IpParsed = LocalHostIpParse(IP);
-
-    RETURN IpParsed REGEXP CONCAT(regex_base, '\.', regex_base, '\.', regex_base, '\.', regex_base);
-END ; $$
-
-CREATE FUNCTION `Ip2Int`(IP VARCHAR(15))
-RETURNS INT UNSIGNED
-DETERMINISTIC
-BEGIN
-    DECLARE Int2Return INT UNSIGNED DEFAULT 0;
-    DECLARE IP_Str VARCHAR(15) DEFAULT NULL; 
-
-    IF NOT IpOk(IP) THEN
-        RETURN 0;
-    END IF;
-
-    SET IP_Str = IP;
-
-    SET Int2Return = CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED);
-    SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 3);
-
-    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) * 256;
-    SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 2);
-
-    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) * 65536;
-    SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 1);
-
-    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) * 16777216;
-
-    RETURN Int2Return;
-END ; $$
-
-CREATE FUNCTION `Int2Ip`(IP INT UNSIGNED)
-RETURNS VARCHAR(15)
-DETERMINISTIC
-BEGIN
-    DECLARE HexStr CHAR(15) DEFAULT NULL;
-
-    SET HexStr = LPAD(HEX(IP), 8, 0);
-
-    RETURN CONCAT(
-        CONV(SUBSTR(HexStr, 1, 2), 16, 10), -- 1 and 2
-        '.',
-        CONV(SUBSTR(HexStr, 3, 2), 16, 10), -- 3 and 4
-        '.',
-        CONV(SUBSTR(HexStr, 5, 2), 16, 10), -- 5 and 6
-        '.',
-        CONV(SUBSTR(HexStr, 7, 2), 16, 10) -- 7 and 8
-    );
-END ; $$
 
 -- ----------------------------------------------------
 --

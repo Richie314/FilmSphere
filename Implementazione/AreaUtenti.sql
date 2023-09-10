@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS `Utente` (
 	`Abbonamento` VARCHAR(50),
 	`DataInizioAbbonamento` DATE,
 
-	CHECK( `Email` REGEXP '[A-Za-z0-9]{1,}[\.\-A-Za-z0-9]{0,}[a-zA-Z0-9]@[a-z]{1}[\.\-\_a-z0-9]{0,}\.[a-z]{1,10}')
+	CHECK(`Email` REGEXP '[A-Za-z0-9]{1,}[\.\-A-Za-z0-9]{0,}[a-zA-Z0-9]@[a-z]{1}[\.\-\_a-z0-9]{0,}\.[a-z]{1,10}')
 ) Engine=InnoDB;
 
 
@@ -93,7 +93,7 @@ CREATE TABLE IF NOT EXISTS `Connessione` (
 	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 	`Hardware` VARCHAR(256),
 
-	PRIMARY KEY (`Utente`, `IP`, `Inizio`),
+	PRIMARY KEY (`IP`, `Inizio`, `Utente`),
 	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
 	ON UPDATE CASCADE ON DELETE CASCADE,
 
@@ -107,7 +107,7 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    PRIMARY KEY(`Timestamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`),
+    PRIMARY KEY(`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`),
     FOREIGN KEY (`Utente`, `IP`, `InizioConnessione`) REFERENCES `Connessione` (`Utente`, `IP`, `Inizio`)
       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`Edizione`) REFERENCES `Edizione` (`ID`)
@@ -163,9 +163,44 @@ CREATE TABLE IF NOT EXISTS `Fattura` (
 CREATE TABLE IF NOT EXISTS `VisualizzazioniGiornaliere` (
     `Film` INT NOT NULL,
     `Data` DATE NOT NULL,
-    `NumeroVisualizzazioni` INT,
+    `NumeroVisualizzazioni` INT DEFAULT 0,
     PRIMARY KEY (`Film`, `Data`),
     FOREIGN KEY (`Film`) REFERENCES `Film` (`ID`)
         ON DELETE CASCADE ON UPDATE CASCADE,
     CHECK (`NumeroVisualizzazioni` >= 0)
 );
+
+DROP PROCEDURE IF EXISTS `VisualizzazoniGiornaliereBuild`;
+DROP EVENT IF EXISTS `VisualizzazioniGiornaliereEvent`;
+
+DELIMITER $$
+
+CREATE PROCEDURE `VisualizzazoniGiornaliereBuild` ()
+proc_body:BEGIN
+
+	DECLARE `date` DATE DEFAULT SUBDATE(CURRENT_DATE, 1);
+
+	IF EXISTS (
+		SELECT v.*
+		FROM `VisualizzazioniGiornaliere` v
+		WHERE v.`Data` = `date`
+	) THEN
+
+		SIGNAL SQLSTATE '01000'
+			SET MESSAGE_TEXT = 'Procedura già lanciata oggi!';
+		LEAVE proc_body;
+	END IF;
+
+	INSERT INTO `VisualizzazioniGiornaliere` (`Film`, `Data`, `NumeroVisualizzazioni`)
+		SELECT E.`Film`, `date`, COUNT(*)
+		FROM `Visualizzazioni` V
+			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`;
+END ; $$
+
+CREATE EVENT `VisualizzazioniGiornaliereEvent`
+ON SCHEDULE EVERY 1 DAY
+DO
+	CALL `VisualizzazoniGiornaliereBuild`();
+$$
+
+DELIMITER ;

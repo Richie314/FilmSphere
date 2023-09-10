@@ -125,7 +125,10 @@ def generate_single_fattura(user, pagata, fatture_pagate, fatture_da_pagare, car
         file.write(line)
 def generate_connessione(user, connessione, visualizzazione, add_vis=False):
 
-    ip = str(int.from_bytes(random.randbytes(4), 'big'))
+    ip = int.from_bytes(random.randbytes(4), 'big')
+    while ip < 16777216:
+        ip = int.from_bytes(random.randbytes(4), 'big')
+    ip = str(ip)
     inizio = data()
     fine = datetime_to_str( data(min=inizio) )
     inizio = datetime_to_str(inizio)
