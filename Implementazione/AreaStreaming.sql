@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS `Erogazione` (
     FOREIGN KEY (`TimeStamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`)
         REFERENCES `Visualizzazione`(`TimeStamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`) 
         ON UPDATE CASCADE ON DELETE CASCADE,
-    FOREIGN KEY (`Server`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY (`Server`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE
 
     -- Vincoli di dominio
     CHECK (`TimeStamp` BETWEEN `InizioConnessione` AND `InizioErogazione`)
