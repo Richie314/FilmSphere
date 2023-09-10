@@ -227,7 +227,7 @@ def generate(number):
     passwords.close()
     nomi.close()
     cognomi.close()
-    file_out.write('(\'richi-314\', \'Nome\', \'Cognome\', \'email@prova.it\', \'hash\', \'Pro\', CURRENT_DATE);')
+    file_out.write('(\'richie-314\', \'Nome\', \'Cognome\', \'email@prova.it\', \'hash\', \'Pro\', CURRENT_DATE);')
     
     with open(fatture_p, 'a') as file:
         file.write('(\'richie-314\', CURRENT_DATE, NULL, NULL);\n')
