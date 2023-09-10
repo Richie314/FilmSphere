@@ -279,11 +279,7 @@ BEGIN
         RETURN FineValidita IS NULL;
     END IF;
 
-    IF FineValidita IS NULL THEN
-        RETURN InizioValidita <= IstanteDaControllare;
-    END IF;
-
-    RETURN IstanteDaControllare BETWEEN InizioValidita AND FineValidita;
+    RETURN IstanteDaControllare BETWEEN InizioValidita AND IFNULL(FineValidita, CURRENT_TIMESTAMP);
 END ; $$
 
 CREATE FUNCTION `IpAppartieneRangeInData`(
@@ -316,8 +312,7 @@ BEGIN
     WHERE IpAppartieneRangeInData(
         r.`Inizio`, r.`Fine`, 
         r.`DataInizio`, r.`DataFine`, 
-        ip, DataDaControllare) AND
-        r.Paese <> '??'
+        ip, DataDaControllare)
     LIMIT 1;
 
     IF Codice IS NULL THEN

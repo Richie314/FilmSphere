@@ -79,7 +79,7 @@ def abbonamento():
     return random.choice(abbonamenti)
 def data(min=None, max=None):
     if not min:
-        return data(min=datetime.datetime.now(), max=max)
+        return data(min=datetime.datetime.now() - datetime.timedelta(days=random.randint(1, 7)), max=max)
     if not max:
         new_max = min + datetime.timedelta(days=random.randint(1, 101))
         return data(min=min, max=new_max)
@@ -130,7 +130,8 @@ def generate_connessione(user, connessione, visualizzazione, add_vis=False):
         ip = int.from_bytes(random.randbytes(4), 'big')
     ip = str(ip)
     inizio = data()
-    fine = datetime_to_str( data(min=inizio) )
+    fine = inizio + datetime.timedelta(hours=random.randint(0, 4), minutes=random.randint(0, 59), seconds=random.randint(0, 59))
+    fine = datetime_to_str(fine)
     inizio = datetime_to_str(inizio)
     hw = random.choice(user_agents)
     with open(connessione, 'a') as file:
