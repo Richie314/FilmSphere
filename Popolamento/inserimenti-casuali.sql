@@ -30,16 +30,16 @@ END $$
 
 DROP PROCEDURE IF EXISTS `VisualizzazioneCasuale` $$
 
-CREATE PROCEDURE `VisualizzazioneCasuale`(IN utente VARCHAR(100), IN ip INT UNSIGNED, IN Inizio TIMESTAMP)
+CREATE PROCEDURE `VisualizzazioneCasuale`(IN utente VARCHAR(100), IN IP INT UNSIGNED, IN Inizio TIMESTAMP)
 BEGIN
     REPLACE INTO `Visualizzazione` (`Timestamp`, `Utente`, `IP`, `InizioConnessione`, `Edizione`)
         WITH `RandEdizione` AS (
-            SELECT E.`ID`, FLOOR(E.`Lunghezza` * RAND()) AS "Delta"
+            SELECT E.`ID`
             FROM `Edizione` E
             ORDER BY RAND()
             LIMIT 1
         )
-        SELECT TIMESTAMPADD(SECOND, E.`Delta` * (-1), inizio), utente, ip, inizio, E.`ID`
+        SELECT TIMESTAMPADD(SECOND, FLOOR(RAND() * 1024), Inizio), utente, IP, Inizio, E.`ID`
         FROM `RandEdizione` E;
 END $$
 
@@ -72,7 +72,7 @@ BEGIN
         SELECT V.*, V.`TimeStamp`, `PoP`.`Server`
         FROM `VisualizzazioniInCorso` V
             INNER JOIN `File` F USING(`Edizione`)
-            INNER JOIN `PoP` ON `PoP`.`File` = `File`.`ID`;
+            INNER JOIN `PoP` ON `PoP`.`File` = F.`ID`;
 END $$
 
 DROP PROCEDURE IF EXISTS `AggiungiGeneri` $$

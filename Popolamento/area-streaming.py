@@ -22,7 +22,7 @@ def generate(number):
     
     file_out.write('INSERT INTO `Server` (`MaxConnessioni`, `LunghezzaBanda`, `MTU`, `Posizione`) VALUES\n')
     
-    for i in range(1, server_number):
+    for i in range(0, server_number):
         line = generate_single_server()
         if server_number == i + 1:
             line = line[:-2] + ';\n'
@@ -33,7 +33,7 @@ def generate(number):
         actual_i = i + server_number
         if actual_i % checkpoint == 0:
             print(str(floor(actual_i / total_rows * 100)) + '%\t' + str(actual_i) + '/' + str(total_rows))
-        line = 'CALL `RandPoP`(' + str(random.randint(1, 20)) + ');\n'
+        line = 'CALL `RandPoP`(' + str(random.randint(1, server_number)) + ');\n'
         file_out.write(line)
 
     file_out.write('\nCALL `AggiungiErogazioni`();\n')
@@ -49,4 +49,4 @@ if __name__ == '__main__':
             number = 0.1
         else:
             number = float(number)
-    generate(floor(number * 9000))
+    generate(max(floor(number * 9000), 100))

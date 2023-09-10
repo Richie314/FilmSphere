@@ -248,6 +248,7 @@ CREATE TABLE IF NOT EXISTS Restrizione (
 DROP TRIGGER IF EXISTS `InserimentoFile`;
 DROP TRIGGER IF EXISTS `ModificaFile`;
 DELIMITER $$
+
 CREATE TRIGGER `InserimentoFile`
 BEFORE INSERT ON `File`
 FOR EACH ROW
@@ -261,15 +262,14 @@ BEGIN
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
             `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
             `Video`.`Versione` = NEW.`VersioneVideo` AND
-            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` <= NEW.`BitRate`
     );
 
-    IF valido = 0 THEN
+    IF valido > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
 END ; $$
-
 
 CREATE TRIGGER `ModificaFile`
 BEFORE UPDATE ON `File`
@@ -285,15 +285,14 @@ BEGIN
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
             `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
             `Video`.`Versione` = NEW.`VersioneVideo` AND
-            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` <= NEW.`BitRate`
     );
 
-    IF valido = 0 THEN
+    IF valido > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
 END ; $$
-
 
 DELIMITER ;
 
@@ -410,7 +409,9 @@ CREATE TABLE IF NOT EXISTS `Visualizzazione` (
     FOREIGN KEY (`Utente`, `IP`, `InizioConnessione`) REFERENCES `Connessione` (`Utente`, `IP`, `Inizio`)
       ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (`Edizione`) REFERENCES `Edizione` (`ID`)
-      ON DELETE CASCADE ON UPDATE CASCADE
+      ON DELETE CASCADE ON UPDATE CASCADE,
+
+	CHECK (`Timestamp` >= `InizioConnessione`)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Abbonamento` (
@@ -694,22 +695,23 @@ CREATE TABLE IF NOT EXISTS `IPRange` (
 
 -- Rimuovo funzioni, trigger e schedule prima di riaggiungerli
 
-DROP FUNCTION IF EXISTS Ip2Int;
-DROP FUNCTION IF EXISTS LocalHostIpParse;
-DROP FUNCTION IF EXISTS IpOk;
-DROP FUNCTION IF EXISTS Int2Ip;
+DROP FUNCTION IF EXISTS `Ip2Int`;
+DROP FUNCTION IF EXISTS `LocalHostIpParse`;
+DROP FUNCTION IF EXISTS `IpOk`;
+DROP FUNCTION IF EXISTS `Int2Ip`;
 
-DROP FUNCTION IF EXISTS IpRangeCollidono;
-DROP FUNCTION IF EXISTS IpRangeValidoInData;
-DROP FUNCTION IF EXISTS IpAppartieneRangeInData;
+DROP FUNCTION IF EXISTS `IpRangeCollidono`;
+DROP FUNCTION IF EXISTS `IpRangeValidoInData`;
+DROP FUNCTION IF EXISTS `IpAppartieneRangeInData`;
 
-DROP FUNCTION IF EXISTS Ip2Paese;
-DROP FUNCTION IF EXISTS Ip2PaeseStorico;
+DROP FUNCTION IF EXISTS `Ip2Paese`;
+DROP FUNCTION IF EXISTS `Ip2PaeseStorico`;
 
-DROP TRIGGER IF EXISTS IpRangeControlloInserimento;
-DROP TRIGGER IF EXISTS IpRangeControlloAggiornamento;
+DROP FUNCTION IF EXISTS `IpRangePossoInserire`;
+DROP PROCEDURE IF EXISTS `IpRangeProvaInserire`;
+DROP PROCEDURE IF EXISTS `IpRangeProvaInserireAdesso`;
 
-DROP EVENT IF EXISTS IpRangeRimozioneErrori;
+DROP TRIGGER IF EXISTS `IpRangeControlloAggiornamento`;
 
 DELIMITER $$
 
@@ -720,7 +722,7 @@ DELIMITER $$
 -- ----------------------------------------------------
 
 
-CREATE FUNCTION LocalHostIpParse(IP VARCHAR(15))
+CREATE FUNCTION `LocalHostIpParse`(IP VARCHAR(15))
 RETURNS VARCHAR(15)
 DETERMINISTIC
 BEGIN
@@ -733,12 +735,12 @@ BEGIN
     RETURN IP;
 END ; $$
 
-CREATE FUNCTION IpOk(IP VARCHAR(15))
+CREATE FUNCTION `IpOk`(IP VARCHAR(15))
 RETURNS BOOLEAN
 DETERMINISTIC
 BEGIN
     DECLARE IpParsed VARCHAR(15) DEFAULT NULL;
-    DECLARE regex_base CHAR(29) DEFAULT '(25[0-5]|2[0-4]\d|[01]?\d?\d)';
+    DECLARE regex_base CHAR(38) DEFAULT '(25[0-5]|2[0-4][0-9]|[01]?[0-9]?[0-9])';
     
     IF IP IS NULL THEN
         RETURN FALSE;
@@ -749,7 +751,7 @@ BEGIN
     RETURN IpParsed REGEXP CONCAT(regex_base, '\.', regex_base, '\.', regex_base, '\.', regex_base);
 END ; $$
 
-CREATE FUNCTION Ip2Int(IP VARCHAR(15))
+CREATE FUNCTION `Ip2Int`(IP VARCHAR(15))
 RETURNS INT UNSIGNED
 DETERMINISTIC
 BEGIN
@@ -765,18 +767,18 @@ BEGIN
     SET Int2Return = CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED);
     SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 3);
 
-    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 8;
+    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) * 256;
     SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 2);
 
-    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 16;
+    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) * 65536;
     SET IP_Str = SUBSTRING_INDEX(IP_Str, '.', 1);
 
-    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) << 24;
+    SET Int2Return = Int2Return + CAST(SUBSTRING_INDEX(IP_Str, '.', -1) AS UNSIGNED) * 16777216;
 
     RETURN Int2Return;
 END ; $$
 
-CREATE FUNCTION Int2Ip(IP INT UNSIGNED)
+CREATE FUNCTION `Int2Ip`(IP INT UNSIGNED)
 RETURNS VARCHAR(15)
 DETERMINISTIC
 BEGIN
@@ -801,7 +803,7 @@ END ; $$
 --
 -- ----------------------------------------------------
 
-CREATE FUNCTION IpRangeCollidono(
+CREATE FUNCTION `IpRangeCollidono`(
     Inizio1 INT UNSIGNED, Fine1 INT UNSIGNED, 
     Inizio2 INT UNSIGNED, Fine2 INT UNSIGNED)
 RETURNS BOOLEAN
@@ -811,8 +813,7 @@ BEGIN
     -- Si assume che Fine2 >= Inizio2
 
     IF Inizio1 > Inizio2 THEN
-        -- Ripetiamo con intervallo invertito in modo da fare meno controlli dopo
-        RETURN IpRangeCollidono(Inizio2, Fine2, Inizio1, Fine1);
+        RETURN Fine2 >= Inizio1;
     END IF;
     -- Dobbiamo controllare se Inizio1 <= Inizio2 <= Fine2
     -- Sappiamo gia' pero' che Inizio1 <= Inizio2
@@ -820,7 +821,7 @@ BEGIN
     RETURN Inizio2 <= Fine1;
 END ; $$
 
-CREATE FUNCTION IpRangeValidoInData(
+CREATE FUNCTION `IpRangeValidoInData`(
     InizioValidita TIMESTAMP, 
     FineValidita TIMESTAMP, 
     IstanteDaControllare TIMESTAMP)
@@ -838,7 +839,7 @@ BEGIN
     RETURN IstanteDaControllare BETWEEN InizioValidita AND FineValidita;
 END ; $$
 
-CREATE FUNCTION IpAppartieneRangeInData(
+CREATE FUNCTION `IpAppartieneRangeInData`(
     Inizio INT UNSIGNED,
     Fine INT UNSIGNED,
     DataInizio TIMESTAMP,
@@ -852,7 +853,7 @@ BEGIN
         (IP BETWEEN Inizio AND Fine) AND IpRangeValidoInData(DataInizio, DataFine, DataDaControllare);
 END ; $$
 
-CREATE FUNCTION Ip2PaeseStorico(ip INT UNSIGNED, DataDaControllare TIMESTAMP)
+CREATE FUNCTION `Ip2PaeseStorico`(ip INT UNSIGNED, DataDaControllare TIMESTAMP)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA
@@ -864,7 +865,7 @@ BEGIN
     END IF;
 
     SELECT r.Paese INTO Codice
-    FROM IPRange r
+    FROM `IPRange` r
     WHERE IpAppartieneRangeInData(
         r.`Inizio`, r.`Fine`, 
         r.`DataInizio`, r.`DataFine`, 
@@ -879,7 +880,7 @@ BEGIN
     RETURN Codice;
 END ; $$
 
-CREATE FUNCTION Ip2Paese(ip INT UNSIGNED)
+CREATE FUNCTION `Ip2Paese`(ip INT UNSIGNED)
 RETURNS CHAR(2)
 NOT DETERMINISTIC
 READS SQL DATA
@@ -888,32 +889,32 @@ BEGIN
 END ; $$
 
 
--- ----------------------------------------------------
+-- -----------------------------------------------------------------
 --
---    Trigger per mantenere IPRanges consistenti
+--  Procedure di inserimento per mantenere IPRanges consistenti
 --
--- ----------------------------------------------------
+-- -----------------------------------------------------------------
 
-CREATE TRIGGER IpRangeControlloInserimento
-BEFORE INSERT ON IPRange
-FOR EACH ROW
-trigger_body:BEGIN
-
+CREATE FUNCTION `IpRangePossoInserire` (
+    `NewInizio` INT UNSIGNED , `NewFine` INT UNSIGNED, 
+    `NewDataInizio` TIMESTAMP, `NewPaese` CHAR(2))
+RETURNS BOOLEAN
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
     -- Controlliamo se il record esiste gia' (ma con data diversa)
     IF EXISTS (
         SELECT * 
         FROM `IPRange` r
         WHERE 
-            r.`Inizio` = NEW.`Inizio` AND 
-            r.`Fine` = NEW.`Fine` AND 
-            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND 
+            r.`Inizio` = `NewInizio` AND 
+            r.`Fine` = `NewFine` AND 
+            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, `NewDataInizio`) AND 
             -- Se puntano allo stesso paese vuol dire che e' il solito range non ancora scaduto
-            r.`Paese` = NEW.`Paese`
+            r.`Paese` = `NewPaese`
         ) THEN
         
-        -- Invalidiamo il range appena inserito, sara' poi rimosso
-        SET NEW.`Paese` = '??';
-        LEAVE trigger_body;
+        RETURN FALSE;
     END IF;
 
     -- Un record gia' presente, con priorita' maggiori, "rompe" quello appena inserito
@@ -921,85 +922,85 @@ trigger_body:BEGIN
         SELECT * 
         FROM `IPRange` r
         WHERE 
-            IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, r.`Inizio`, r.`Fine`) AND
-            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND
+            IpRangeCollidono(`NewInizio`, `NewFine`, r.`Inizio`, r.`Fine`) AND
+            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, `NewDataInizio`) AND
             r.`Paese` <> '??'
         ) THEN
         
-        -- Rimuovo il record appena inserito
-        SET NEW.`Paese` = '??';
-        LEAVE trigger_body;
+        RETURN FALSE;
+    END IF;
+
+    RETURN TRUE;
+END ; $$
+
+CREATE PROCEDURE `IpRangeProvaInserire` (
+    IN `NewInizio` INT UNSIGNED, IN `NewFine` INT UNSIGNED, 
+    IN `NewDataInizio` TIMESTAMP, IN `NewDataFine` TIMESTAMP, 
+    `NewPaese` CHAR(2)
+)
+insert_body:BEGIN
+
+    -- Controllo sulla consistenza del range temporale
+    IF `NewDataFine` IS NOT NULL AND `NewDataFine` < `NewDataInizio` THEN
+        SIGNAL SQLSTATE '01000'
+            SET MESSAGE_TEXT = 'Range di date invertito: DataInizio > DataFine';
+        LEAVE insert_body;
+    END IF;
+
+    -- Controllo sulla consistenza del range
+    IF `NewFine` < `NewInizio` THEN
+        SIGNAL SQLSTATE '01000'
+            SET MESSAGE_TEXT = 'Range invertito: Inizio > Fine';
+        LEAVE insert_body;
+    END IF;
+
+    -- Controllo sull'esistenza del paese
+    IF `NewPaese` = '??' OR NOT EXISTS (
+        SELECT *
+        FROM `Paese` P
+        WHERE P.`Codice` = `NewPaese`
+    ) THEN
+        SIGNAL SQLSTATE '01000'
+            SET MESSAGE_TEXT = 'Paese non trovato!';
+        LEAVE insert_body;
+    END IF;
+
+    -- Controllo sugli altri range
+    IF NOT `IpRangePossoInserire` (`NewInizio`, `NewFine`, `NewDataInizio`, `NewPaese`) THEN
+        SIGNAL SQLSTATE '01000'
+            SET MESSAGE_TEXT = 'Ip Range collide con altri esistenti!';
+        LEAVE insert_body;
     END IF;
 
     -- Se il record inserito "rompe" uno gia' presente, con meno piorita' si fa scadere quello gia' presente
     UPDATE `IPRange`
-    SET `IPRange`.`DataFine` = NEW.`DataInizio` - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
+    SET `IPRange`.`DataFine` = `NewDataInizio` - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
     WHERE
-        IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, IPRange.`Inizio`, IPRange.`Fine`)  AND
-        IpRangeValidoInData(NEW.`DataInizio`, NEW.`DataFine`, IPRange.`DataInizio`) AND
-        IPRange.`Paese` <> '??';
-    
+        IpRangeCollidono(`NewInizio`, `NewFine`, `IPRange`.`Inizio`, `IPRange`.`Fine`)  AND
+        IpRangeValidoInData(`NewDataInizio`, `NewDataFine`, `IPRange`.`DataInizio`);
+
+    -- Inserisco essendo sicuro di aver mantenuto coerenza tra gli ip
+    INSERT INTO `IPRange` (`Inizio`, `Fine`, `DataInizio`, `DataFine`, `Paese`) VALUES
+    (`NewInizio`, `NewFine`, `NewDataInizio`, `NewDataFine`, `NewPaese`);
 END ; $$
 
-CREATE TRIGGER IpRangeControlloAggiornamento
-BEFORE UPDATE ON IPRange
+CREATE PROCEDURE `IpRangeProvaInserireAdesso` (
+    IN `NewInizio` INT UNSIGNED, IN `NewFine` INT UNSIGNED, `NewPaese` CHAR(2))
+BEGIN
+    CALL `IpRangeProvaInserire`(`NewInizio`, `NewFine`, CURRENT_TIMESTAMP, NULL, `NewPaese`);
+END ; $$
+
+
+CREATE TRIGGER `IpRangeControlloAggiornamento`
+BEFORE UPDATE ON `IPRange`
 FOR EACH ROW
-trigger_body:BEGIN
+BEGIN
 
-    -- Controlliamo se il record esiste gia' (ma con data diversa)
-    IF EXISTS (
-        SELECT * 
-        FROM `IPRange` r
-        WHERE 
-            r.`Inizio` = NEW.`Inizio` AND 
-            r.`Fine` = NEW.`Fine` AND 
-            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND 
-            -- Se puntano allo stesso paese vuol dire che e' il solito range non ancora scaduto
-            r.`Paese` = NEW.`Paese`
-        ) THEN
-        
-        -- Invalidiamo il range appena inserito, sara' poi rimosso
-        SET NEW.`Paese` = '??';
-        LEAVE trigger_body;
+    IF NEW.`Inizio` <> OLD.`Inizio` OR NEW.`Fine` <> OLD.`Fine` THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Non si possono modificare i range! Cancellare il range e inserirne uno nuovo.';
     END IF;
-
-    -- Un record gia' presente, con priorita' maggiori, "rompe" quello appena inserito
-    IF EXISTS (
-        SELECT * 
-        FROM `IPRange` r
-        WHERE 
-            IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, r.`Inizio`, r.`Fine`) AND
-            IpRangeValidoInData(r.`DataInizio`, r.`DataFine`, NEW.`DataInizio`) AND
-            r.`Paese` <> '??'
-        ) THEN
-        
-        -- Rimuovo il record appena inserito
-        SET NEW.`Paese` = '??';
-        LEAVE trigger_body;
-    END IF;
-
-    -- Se il record inserito "rompe" uno gia' presente, con meno piorita' si fa scadere quello gia' presente
-    UPDATE `IPRange`
-    SET `IPRange`.`DataFine` = NEW.`DataInizio` - INTERVAL 1 SECOND -- I timestamp vengono tenuti leggermente differenti
-    WHERE
-        IpRangeCollidono(NEW.`Inizio`, NEW.`Fine`, IPRange.`Inizio`, IPRange.`Fine`)  AND
-        IpRangeValidoInData(NEW.`DataInizio`, NEW.`DataFine`, IPRange.`DataInizio`) AND
-        IPRange.`Paese` <> '??';
     
 END ; $$
-
--- ----------------------------------------------------
---
---   Schedule event per eliminare IpRange invalidi
---
--- ----------------------------------------------------
-
-CREATE EVENT `IpRangeRimozioneErrori`
-ON SCHEDULE EVERY 1 DAY
-DO
-    DELETE 
-    FROM `IPRange`
-    WHERE `IPRange`.`Paese` = '??';
-$$
 
 DELIMITER ;

@@ -1,11 +1,11 @@
-DELETE FROM Edizione;
-DELETE FROM Restrizione;
-DELETE FROM FormatoCodifica;
-DELETE FROM File;
-DELETE FROM Sottotitolaggio;
-DELETE FROM Doppiaggio;
+DELETE FROM `Edizione`;
+DELETE FROM `Restrizione`;
+DELETE FROM `FormatoCodifica`;
+DELETE FROM `File`;
+DELETE FROM `Sottotitolaggio`;
+DELETE FROM `Doppiaggio`;
 
-REPLACE INTO Edizione VALUES
+REPLACE INTO `Edizione` (`ID`, `Film`, `Anno`, `Tipo`, `Lunghezza`, `RapportoAspetto`) VALUES
 (1, 1, 2005, 'Edizione Blu-Ray',9840, 1.33),
 (2, 1, 2007, 'Terza Edizione',7380, 1),
 (3, 2, 1994, 'Prima Edizone',9960, 1.33),
@@ -153,7 +153,7 @@ REPLACE INTO Edizione VALUES
 (145, 99, 1986, 'Terza Edizione',10200, 1.33),
 (146, 99, 1992, 'Prima Edizone',7380, 1);
 
-REPLACE INTO Restrizione VALUES
+REPLACE INTO `Restrizione` (`Edizione`, `Paese`) VALUES
 (65, 'AF'),
 (102, 'AQ'),
 (121, 'CO'),
@@ -301,17 +301,21 @@ REPLACE INTO Restrizione VALUES
 (59, 'WS'),
 (118, 'AT');
 
-INSERT INTO FormatoCodifica VALUES
-    ('ALAC', '1', 0, 100000000),
-    ('ALAC', '2', 0, 100000000),
-    ('ALAC', '3', 0, 100000000),
-    ('MPEG-4', '1', 1, 200000000),
-    ('MPEG-4', '2', 1, 200000000),
-    ('MPEG-4', '3', 1, 200000000),
-    ('H', '264', 0, 100000000),
-    ('H', '265', 0, 100000000);
+INSERT INTO `FormatoCodifica` (`Famiglia`, `Versione`, `Lossy`, `MaxBitRate`) VALUES
+    ('ALAC', '1', FALSE, 100000000),
+    ('ALAC', '2', FALSE, 100000000),
+    ('ALAC', '3', FALSE, 100000000),
+    ('MPEG-4', '1', TRUE, 200000000),
+    ('MPEG-4', '2', TRUE, 200000000),
+    ('MPEG-4', '3', TRUE, NULL),
+    ('H', '264', FALSE, 100000000),
+    ('H', '265', FALSE, 100000000);
 
-REPLACE INTO File Values
+REPLACE INTO `File` (
+    `ID`, `Edizione`, 
+    `Dimensione`, `BitRate`, `FormatoContenitore`, 
+    `FamigliaAudio`, `VersioneAudio`, `FamigliaVideo`, `VersioneVideo`,
+    `Risoluzione`, `FPS`, `BitDepth`, `Frequenza`) VALUES
 (1, 1, 10187187, 220, 'mp4','MPEG-4','1','H','265',63165392,30,64,99057),
 (2, 1, 4074428358, 29789990, 'mov','MPEG-4','2','H','265',98439795,30,4,20658),
 (3, 2, 5375612894, 4607437, 'mp4','MPEG-4','1','H','265',2628178,30,64,53813),
@@ -515,7 +519,7 @@ REPLACE INTO File Values
 (201, 146, 8610044516, 26380975, 'mkv','ALAC','2','H','264',10625634,30,64,41308);
 
 
-REPLACE INTO Doppiaggio VALUES
+REPLACE INTO `Doppiaggio` (`File`, `Lingua`) VALUES
 (1, 'Slovacco'),
 (1, 'Indonesiano'),
 (1, 'Rumeno'),
@@ -1134,7 +1138,7 @@ REPLACE INTO Doppiaggio VALUES
 (201, 'Islandese'),
 (201, 'Italiano');
 
-REPLACE INTO Sottotitolaggio VALUES
+REPLACE INTO `Sottotitolaggio` (`File`, `Lingua`) VALUES
 (1, 'Rumeno'),
 (1, 'Islandese'),
 (1, 'Estone'),

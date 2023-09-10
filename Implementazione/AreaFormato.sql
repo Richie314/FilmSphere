@@ -131,10 +131,10 @@ BEGIN
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
             `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
             `Video`.`Versione` = NEW.`VersioneVideo` AND
-            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` <= NEW.`BitRate`
     );
 
-    IF valido = 0 THEN
+    IF valido > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
@@ -154,10 +154,10 @@ BEGIN
             `Audio`.`Versione` = NEW.`VersioneAudio` AND
             `Video`.`Famiglia` = NEW.`FamigliaVideo` AND
             `Video`.`Versione` = NEW.`VersioneVideo` AND
-            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` >= NEW.`BitRate`
+            `Audio`.`MaxBitRate` + `Video`.`MaxBitRate` <= NEW.`BitRate`
     );
 
-    IF valido = 0 THEN
+    IF valido > 0 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
