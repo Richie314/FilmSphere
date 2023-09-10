@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS `Edizione` (
     `Film` INT NOT NULL,
     
     -- Anno di pubblicazione
-    `Anno` YEAR NOT NULL DEFAULT YEAR(CURRENT_DATE),
+    `Anno` YEAR NOT NULL DEFAULT 2023,
     
     -- Commento associato: Prima Edizone, Edizione Blu-Ray, ...
     `Tipo` VARCHAR(128),
