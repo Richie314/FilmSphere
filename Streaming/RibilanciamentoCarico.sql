@@ -202,5 +202,3 @@ DO
 $$
 
 DELIMITER ;
-
-CALL `RibilanciamentoCarico`();

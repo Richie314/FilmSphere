@@ -45,17 +45,23 @@ END $$
 
 DROP PROCEDURE IF EXISTS `RandPoP` $$
 
-CREATE PROCEDURE `RandPoP`(IN server_id INT)
+CREATE PROCEDURE `RandPoP`()
 BEGIN
-    REPLACE INTO `Pop` (`File`, `Server`)
-        WITH `RandFile` AS (
-            SELECT F.`ID`
-            FROM `File` F
-            ORDER BY RAND()
-            LIMIT 16
-        )
-        SELECT F.`ID`, server_id
-        FROM `RandFile` F;
+    DECLARE `FileMaxID` INT DEFAULT 0;
+    SELECT MAX(`ID`) INTO `FileMaxID` FROM `File`;
+
+    WHILE `FileMaxID` >= 1 DO
+        REPLACE INTO `PoP` (`Server`, `File`)
+            WITH `RandServer` AS (
+                SELECT S.`ID`
+                FROM `Server` S
+                ORDER BY RAND()
+                LIMIT 3
+            )
+            SELECT S.`ID`, `FileMaxID`
+            FROM `RandServer` S;
+        SET `FileMaxID` = `FileMaxID` - 1;
+    END WHILE;
 END $$
 
 DROP PROCEDURE IF EXISTS `AggiungiErogazioni` $$
@@ -87,7 +93,7 @@ BEGIN
         )
         SELECT F.`ID`, G.`Nome`
         FROM `Film` F
-        INNER JOIN `RandGenere` G ON RAND() > 0.82
+            INNER JOIN `RandGenere` G ON RAND() > 0.82
         ORDER BY F.`ID`;
 
 END $$

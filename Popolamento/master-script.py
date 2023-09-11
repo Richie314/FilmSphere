@@ -80,7 +80,7 @@ if __name__ == '__main__':
             'AreaFormato.sql',
             'abbonamenti.sql',
             execute_script('area-utenti', percentage=percentage),
-            execute_script('area-streaming', percentage=percentage),
+            execute_script('area-streaming'),
             execute_script('ip-ranges')
         ]
     out_name = 'FilmSphere.sql'
