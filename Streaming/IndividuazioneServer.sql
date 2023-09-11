@@ -1,8 +1,10 @@
 USE `FilmSphere`;
 
-DROP PROCEDURE IF EXISTS `MigliorServer`;
 DROP FUNCTION IF EXISTS `MathMap`;
 DROP FUNCTION IF EXISTS `StrListContains`;
+DROP FUNCTION IF EXISTS `CalcolaDelta`;
+DROP PROCEDURE IF EXISTS `MigliorServer`;
+DROP PROCEDURE IF EXISTS `TrovaMigliorServer`;
 
 DELIMITER $$
 
@@ -11,7 +13,7 @@ CREATE PROCEDURE `MigliorServer` (
     -- Dati sull'utente e la connessione
     IN id_utente VARCHAR(100), -- Codice di Utente
     IN id_edizione INT, -- ID di Edizione che si intende guardare
-    IN ip_connessione INT, -- Indirizzo IP4 della connessione
+    IN ip_connessione INT UNSIGNED, -- Indirizzo IP4 della connessione
     
     -- Dati su capacita' dispositivo client e potenza della sua connessione
     IN MaxBitRate FLOAT,
@@ -28,22 +30,24 @@ CREATE PROCEDURE `MigliorServer` (
     DECLARE paese_utente CHAR(2) DEFAULT '??';
     DECLARE abbonamento_utente VARCHAR(50) DEFAULT NULL;
     DECLARE max_definizione BIGINT DEFAULT NULL;
+    /*
     DECLARE wRis FLOAT DEFAULT 5.0;
     DECLARE wRate FLOAT DEFAULT 3.0;
     DECLARE wPos FLOAT DEFAULT 12.0;
     DECLARE wCarico FLOAT DEFAULT 10.0;
+    */
 
     IF id_utente IS NULL OR id_edizione IS NULL THEN
-         SIGNAL SQLSTATE 45000 
-            SET MESSAGE_TEXT = 'Parametri NULL non consentiti';
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Parametri NULL non consentiti';
     END IF;
 
 
     SELECT A.`Tipo`, A.`Definizione`
-        INTO abbonamento_utente, MaxDefinizione
+        INTO abbonamento_utente, MaxRisoluz
     FROM `Abbonamento` A
-        INNER JOIN `Utente` ON `Utente`.`Abbonamento` = A.`Tipo`
-    WHERE A.`Codice` = id_utente;
+        INNER JOIN `Utente` U ON `U`.`Abbonamento` = A.`Tipo`
+    WHERE U.`Codice` = id_utente;
 
     IF abbonamento_utente IS NULL THEN
          SIGNAL SQLSTATE '45000' 
@@ -54,7 +58,7 @@ CREATE PROCEDURE `MigliorServer` (
         SELECT *
         FROM `Esclusione`
             INNER JOIN `GenereFilm` USING (`Genere`)
-            INNER JOIN `Edizone` USING (`Film`)
+            INNER JOIN `Edizione` USING (`Film`)
         WHERE `ID` = id_edizione AND `Abbonamento` = abbonamento_utente) THEN
         
         SIGNAL SQLSTATE '45000'
@@ -110,15 +114,13 @@ CREATE PROCEDURE `TrovaMigliorServer` (
     DECLARE wPos FLOAT DEFAULT 12.0;
     DECLARE wCarico FLOAT DEFAULT 10.0;
 
-    -- Calcolo il Paese dai Range
-    SET paese_utente = Ip2Paese(ip_connessione);
 
     -- Prima di calcolare il Server migliore individuo le caratteristiche che deve avere il File
     
-    max_definizione = LEAST(MaxDefinizioneAbbonamento, MaxDefinizione);
+    SET max_definizione = LEAST(MaxRisoluz, MaxRisoluzAbbonamento);
 
-    IF max_definizione IS NULL OR max_definiz = 0 THEN
-        SET max_definizione = MaxDefinizione;
+    IF max_definizione IS NULL OR max_definizione = 0 THEN
+        SET max_definizione = MaxRisoluz;
     END IF;
 
     WITH `FileDisponibili` AS (
@@ -133,15 +135,15 @@ CREATE PROCEDURE `TrovaMigliorServer` (
             (ListaAudioEncodings IS NULL OR StrListContains(ListaAudioEncodings, F.`FamigliaAudio`)) AND
             (ListaVideoEncodings IS NULL OR StrListContains(ListaVideoEncodings, F.`FamigliaVideo`))
     ), `ServerDisponibili` AS (
-        SELECT S.`ID`, s.`CaricoAttuale`, s.`MaxConnessioni`
+        SELECT S.`ID`, S.`CaricoAttuale`, S.`MaxConnessioni`
         FROM `Server` S
         WHERE ServerDaEscludere IS NULL OR NOT StrListContains(ServerDaEscludere, S.`ID`)
     ), `FileServerScore` AS (
         SELECT 
             F.`ID`,
             D.`Server`,
-            MathMap(F.`DeltaRis`, 0.0, MAX_RIS, 0, wRis) AS "ScoreRis",
-            MathMap(F.`DeltaRate`, 0.0, MAX_RATE, 0, wRate) AS "ScoreRate",
+            MathMap(F.`DeltaRis`, 0.0, 16384, 0, wRis) AS "ScoreRis",
+            MathMap(F.`DeltaRate`, 0.0, 1.4 * 1024 * 1024 * 1024, 0, wRate) AS "ScoreRate",
             MathMap(D.`ValoreDistanza`, 0.0, 40000, 0, wPos) AS "ScoreDistanza",
             MathMap(S.`CaricoAttuale`, 0.0, S.`MaxConnessioni`, 0, wCarico) AS "ScoreCarico"
         FROM `FileDisponibili` F
@@ -193,7 +195,7 @@ BEGIN
 END $$
 
 CREATE FUNCTION `StrListContains` (
-    `Pagliaio` VARCHAR(256)
+    `Pagliaio` VARCHAR(256),
     `Ago` VARCHAR(10)
 )
 RETURNS BOOLEAN
@@ -218,7 +220,11 @@ BEGIN
         
     END WHILE;
 
-    RETURNS FALSE;
+    RETURN FALSE;
 END $$
 
 DELIMITER ;
+
+
+-- CALL MigliorServer('adriabp5w', 11, 62364199, 2000000, 16384, 'MPEG-4', 'ALAC, H', @file_id, @server_id);
+-- SELECT @file_id, @server_id;
