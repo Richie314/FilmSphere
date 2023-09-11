@@ -14,7 +14,7 @@ def generate():
     """
     delta_max = 0
     with open('asn-country-ipv4-num.csv', 'r') as file_in, open('ip-ranges.sql', 'w') as file_out:
-        sql = 'REPLACE INTO `IPRange` (`Paese`, `Inizio`, `Fine`) VALUES\n'
+        sql = 'REPLACE INTO `IPRange` (`Paese`, `Inizio`, `Fine`, `DataInizio`) VALUES\n'
         old_line = ''
         file_out.write(sql)
         for line_in in file_in:
@@ -27,10 +27,10 @@ def generate():
             assert len(country_code) == 2
             country_code = country_code.upper()
             
-            if ip_end - ip_start < 2048:
+            if ip_end - ip_start < 1024:
                 continue
 
-            this_line = f'(\'{country_code}\', {ip_start}, {ip_end})'
+            this_line = f'(\'{country_code}\', {ip_start}, {ip_end}, CURRENT_TIMESTAMP - INTERVAL 2 DAY)'
             if len(old_line) == 0:
                 # First time we write, no comma
                 old_line = '\n\t' + this_line

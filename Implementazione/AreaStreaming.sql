@@ -126,27 +126,27 @@ DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `Erogazione` (
     -- Uguali a Visualizzazione
-    `TimeStamp` TIMESTAMP,
-    `Edizione` INT NOT NULL,
-    `Utente` VARCHAR(100) NOT NULL,
     `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `Utente` VARCHAR(100) NOT NULL,
+    `Edizione` INT NOT NULL,
+    `Timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Quando il Server ha iniziato a essere usato
-    `InizioErogazione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `InizioErogazione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     -- Il Server in uso
     `Server` INT NOT NULL,
 
     -- Chiavi
-    PRIMARY KEY (`IP`, `InizioConnessione`, `Utente`, `Edizione`, `Timestamp`),
-    FOREIGN KEY (`IP`, `InizioConnessione`, `Utente`, `Edizione`, `Timestamp`)
-        REFERENCES `Visualizzazione`(`IP`, `InizioConnessione`, `Utente`, `Edizione`, `Timestamp`) 
+    PRIMARY KEY (`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`),
+    FOREIGN KEY (`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`)
+        REFERENCES `Visualizzazione`(`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`) 
         ON UPDATE CASCADE ON DELETE CASCADE,
     FOREIGN KEY (`Server`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE,
 
     -- Vincoli di dominio
-    CHECK (`TimeStamp` BETWEEN `InizioConnessione` AND `InizioErogazione`)
+    CHECK (`Timestamp` BETWEEN `InizioConnessione` AND `InizioErogazione`)
 ) Engine=InnoDB;
 
 DROP PROCEDURE IF EXISTS AggiungiErogazioneServer;

@@ -87,9 +87,9 @@ END ; $$
 DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS `Connessione` (
-	`Utente` VARCHAR(100) NOT NULL,
 	`IP` INT UNSIGNED NOT NULL,
 	`Inizio` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	`Utente` VARCHAR(100) NOT NULL,
 	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	`Hardware` VARCHAR(256) NOT NULL DEFAULT 'Dispositivo sconosciuto',
 
@@ -98,16 +98,16 @@ CREATE TABLE IF NOT EXISTS `Connessione` (
 	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`) ON UPDATE CASCADE ON DELETE CASCADE,
 
 	-- Vincoli di dominio
-	CHECK (`IP` >= 16777216), -- Un IP non puo' assumere tutti i valori di un intero
+	-- CHECK (`IP` >= 16777216), -- Un IP non puo' assumere tutti i valori di un intero
 	CHECK (`Fine` >= `Inizio`)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Visualizzazione` (
-    `Timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `Edizione` INT NOT NULL,
-    `Utente` VARCHAR(100) NOT NULL,
     `IP` INT UNSIGNED NOT NULL,
     `InizioConnessione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `Utente` VARCHAR(100) NOT NULL,
+    `Edizione` INT NOT NULL,
+    `Timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY(`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`),
     FOREIGN KEY (`Utente`, `IP`, `InizioConnessione`) REFERENCES `Connessione` (`Utente`, `IP`, `Inizio`)
@@ -203,13 +203,14 @@ proc_body:BEGIN
 	END IF;
 
 	INSERT INTO `VisualizzazioniGiornaliere` (`Film`, `Paese`, `Data`, `NumeroVisualizzazioni`)
-		SELECT E.`Film`, IFNULL(r.`Paese`, '??'), DATE(V.`Timestamp`), COUNT(*)
-		FROM `Visualizzazioni` V
+		SELECT E.`Film`, IFNULL(r.`Paese`, '??') AS "Paese", DATE(V.`Timestamp`) AS "Data", COUNT(*)
+		FROM `Visualizzazione` V
 			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
 			LEFT OUTER JOIN `IPRange` r ON     	
 				(V.`IP` BETWEEN r.`Inizio` AND r.`Fine`) AND 
         		(V.`InizioConnessione` BETWEEN r.`DataInizio` AND IFNULL(r.`DataFine`, CURRENT_TIMESTAMP))
-		WHERE DATE(V.`Timestamp`) = `data_target`;
+		WHERE DATE(V.`Timestamp`) = `data_target`
+		GROUP BY E.`Film`, "Paese", "Data";
 END ; $$
 
 CREATE PROCEDURE `VisualizzazoniGiornaliereFullReBuild` ()
@@ -217,13 +218,14 @@ BEGIN
 	DECLARE `min_date` DATE DEFAULT SUBDATE(CURRENT_DATE, 32);
 
 	REPLACE INTO `VisualizzazioniGiornaliere` (`Film`, `Paese`, `Data`, `NumeroVisualizzazioni`)
-		SELECT E.`Film`, IFNULL(r.`Paese`, '??'), DATE(V.`Timestamp`), COUNT(*)
-		FROM `Visualizzazioni` V
+		SELECT E.`Film`, IFNULL(r.`Paese`, '??') AS "Paese", DATE(V.`Timestamp`) AS "Data", COUNT(*)
+		FROM `Visualizzazione` V
 			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
 			LEFT OUTER JOIN `IPRange` r ON     	
 				(V.`IP` BETWEEN r.`Inizio` AND r.`Fine`) AND 
         		(V.`InizioConnessione` BETWEEN r.`DataInizio` AND IFNULL(r.`DataFine`, CURRENT_TIMESTAMP))
 		WHERE `min_date` <= DATE(V.`TimeStamp`)
+		GROUP BY E.`Film`, "Paese", "Data";
 END ; $$
 
 CREATE EVENT `VisualizzazioniGiornaliereEvent`

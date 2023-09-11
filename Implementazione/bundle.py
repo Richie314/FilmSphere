@@ -3,12 +3,15 @@ def bundle():
         with open('AreaContenuti.sql', 'r') as file:
             for line in file:
                 out.write(line)
+        out.write('\n\n')
         with open('AreaFormato.sql', 'r') as file:
             for line in file:
                 out.write(line)
+        out.write('\n\n')
         with open('AreaUtenti.sql', 'r') as file:
             for line in file:
                 out.write(line)
+        out.write('\n\n')
         with open('AreaStreaming.sql', 'r') as file:
             for line in file:
                 out.write(line)
