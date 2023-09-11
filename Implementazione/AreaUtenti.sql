@@ -29,38 +29,38 @@ CREATE TABLE IF NOT EXISTS `Recensione` (
 	CHECK(`Voto` BETWEEN 0.0 AND 5.0)
 ) Engine=InnoDB;
 
-DROP TRIGGER IF EXISTS InserimentoRecensione;
-DROP TRIGGER IF EXISTS CancellazioneRecensione;
-DROP TRIGGER IF EXISTS ModificaRecensione;
+DROP TRIGGER IF EXISTS `InserimentoRecensione`;
+DROP TRIGGER IF EXISTS `CancellazioneRecensione`;
+DROP TRIGGER IF EXISTS `ModificaRecensione`;
 
-DROP PROCEDURE IF EXISTS AggiungiRecensione;
-DROP PROCEDURE IF EXISTS RimuoviRecensione;
+DROP PROCEDURE IF EXISTS `AggiungiRecensione`;
+DROP PROCEDURE IF EXISTS `RimuoviRecensione`;
 
 DELIMITER $$
 
-CREATE TRIGGER InserimentoRecensione
-AFTER INSERT ON Recensione
+CREATE TRIGGER `InserimentoRecensione`
+AFTER INSERT ON `Recensione`
 FOR EACH ROW
 BEGIN
 	CALL AggiungiRecensione(NEW.`Film`, NEW.`Voto`);
 END ; $$
 
-CREATE TRIGGER CancellazioneRecensione
-AFTER DELETE ON Recensione
+CREATE TRIGGER `CancellazioneRecensione`
+AFTER DELETE ON `Recensione`
 FOR EACH ROW
 BEGIN
 	CALL RimuoviRecensione(OLD.`Film`, OLD.`Voto`);
 END ; $$
 
-CREATE TRIGGER ModificaRecensione
-AFTER UPDATE ON Recensione
+CREATE TRIGGER `ModificaRecensione`
+AFTER UPDATE ON `Recensione`
 FOR EACH ROW
 BEGIN
 	CALL AggiungiRecensione(NEW.`Film`, NEW.`Voto`);
 	CALL RimuoviRecensione(OLD.`Film`, OLD.`Voto`);
 END ; $$
 
-CREATE PROCEDURE AggiungiRecensione(IN Film_ID INT, IN ValoreVoto FLOAT)
+CREATE PROCEDURE `AggiungiRecensione`(IN Film_ID INT, IN ValoreVoto FLOAT)
 BEGIN
 	UPDATE `Film`
 	SET 
@@ -72,7 +72,7 @@ BEGIN
 	WHERE `Film`.`ID` = Film_ID;
 END ; $$
 
-CREATE PROCEDURE RimuoviRecensione(IN Film_ID INT, IN ValoreVoto FLOAT)
+CREATE PROCEDURE `RimuoviRecensione`(IN Film_ID INT, IN ValoreVoto FLOAT)
 BEGIN
 	UPDATE `Film`
 	SET 
@@ -89,23 +89,25 @@ DELIMITER ;
 CREATE TABLE IF NOT EXISTS `Connessione` (
 	`Utente` VARCHAR(100) NOT NULL,
 	`IP` INT UNSIGNED NOT NULL,
-	`Inizio` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	`Hardware` VARCHAR(256),
+	`Inizio` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	`Fine` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+	`Hardware` VARCHAR(256) NOT NULL DEFAULT 'Dispositivo sconosciuto',
 
+	-- Chiavi
 	PRIMARY KEY (`IP`, `Inizio`, `Utente`),
-	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`)
-	ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY (`Utente`) REFERENCES `Utente` (`Codice`) ON UPDATE CASCADE ON DELETE CASCADE,
 
+	-- Vincoli di dominio
+	CHECK (`IP` >= 16777216), -- Un IP non puo' assumere tutti i valori di un intero
 	CHECK (`Fine` >= `Inizio`)
 ) Engine=InnoDB;
 
 CREATE TABLE IF NOT EXISTS `Visualizzazione` (
-    `Timestamp` TIMESTAMP NOT NULL,
+    `Timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `Edizione` INT NOT NULL,
     `Utente` VARCHAR(100) NOT NULL,
     `IP` INT UNSIGNED NOT NULL,
-    `InizioConnessione` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `InizioConnessione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY(`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`),
     FOREIGN KEY (`Utente`, `IP`, `InizioConnessione`) REFERENCES `Connessione` (`Utente`, `IP`, `Inizio`)
@@ -162,15 +164,24 @@ CREATE TABLE IF NOT EXISTS `Fattura` (
 
 CREATE TABLE IF NOT EXISTS `VisualizzazioniGiornaliere` (
     `Film` INT NOT NULL,
+	`Paese` CHAR(2) NOT NULL DEFAULT '??',
     `Data` DATE NOT NULL,
+
     `NumeroVisualizzazioni` INT DEFAULT 0,
-    PRIMARY KEY (`Film`, `Data`),
+    
+	-- Chiavi
+	PRIMARY KEY (`Film`, `Paese`, `Data`),
     FOREIGN KEY (`Film`) REFERENCES `Film` (`ID`)
         ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (`Paese`) REFERENCES `Paese` (`Codice`)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+
+	-- Vincoli di dominio
     CHECK (`NumeroVisualizzazioni` >= 0)
 );
 
 DROP PROCEDURE IF EXISTS `VisualizzazoniGiornaliereBuild`;
+DROP PROCEDURE IF EXISTS `VisualizzazoniGiornaliereFullReBuild`;
 DROP EVENT IF EXISTS `VisualizzazioniGiornaliereEvent`;
 
 DELIMITER $$
@@ -178,12 +189,12 @@ DELIMITER $$
 CREATE PROCEDURE `VisualizzazoniGiornaliereBuild` ()
 proc_body:BEGIN
 
-	DECLARE `date` DATE DEFAULT SUBDATE(CURRENT_DATE, 1);
+	DECLARE `data_target` DATE DEFAULT SUBDATE(CURRENT_DATE, 1);
 
 	IF EXISTS (
 		SELECT v.*
 		FROM `VisualizzazioniGiornaliere` v
-		WHERE v.`Data` = `date`
+		WHERE v.`Data` = `data_target`
 	) THEN
 
 		SIGNAL SQLSTATE '01000'
@@ -191,10 +202,28 @@ proc_body:BEGIN
 		LEAVE proc_body;
 	END IF;
 
-	INSERT INTO `VisualizzazioniGiornaliere` (`Film`, `Data`, `NumeroVisualizzazioni`)
-		SELECT E.`Film`, `date`, COUNT(*)
+	INSERT INTO `VisualizzazioniGiornaliere` (`Film`, `Paese`, `Data`, `NumeroVisualizzazioni`)
+		SELECT E.`Film`, IFNULL(r.`Paese`, '??'), DATE(V.`Timestamp`), COUNT(*)
 		FROM `Visualizzazioni` V
-			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`;
+			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+			LEFT OUTER JOIN `IPRange` r ON     	
+				(V.`IP` BETWEEN r.`Inizio` AND r.`Fine`) AND 
+        		(V.`InizioConnessione` BETWEEN r.`DataInizio` AND IFNULL(r.`DataFine`, CURRENT_TIMESTAMP))
+		WHERE DATE(V.`Timestamp`) = `data_target`;
+END ; $$
+
+CREATE PROCEDURE `VisualizzazoniGiornaliereFullReBuild` ()
+BEGIN
+	DECLARE `min_date` DATE DEFAULT SUBDATE(CURRENT_DATE, 32);
+
+	REPLACE INTO `VisualizzazioniGiornaliere` (`Film`, `Paese`, `Data`, `NumeroVisualizzazioni`)
+		SELECT E.`Film`, IFNULL(r.`Paese`, '??'), DATE(V.`Timestamp`), COUNT(*)
+		FROM `Visualizzazioni` V
+			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+			LEFT OUTER JOIN `IPRange` r ON     	
+				(V.`IP` BETWEEN r.`Inizio` AND r.`Fine`) AND 
+        		(V.`InizioConnessione` BETWEEN r.`DataInizio` AND IFNULL(r.`DataFine`, CURRENT_TIMESTAMP))
+		WHERE `min_date` <= DATE(V.`TimeStamp`)
 END ; $$
 
 CREATE EVENT `VisualizzazioniGiornaliereEvent`

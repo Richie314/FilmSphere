@@ -37,7 +37,7 @@ def generate():
             else:
                 old_line = ',\n\t' + this_line
             file_out.write(old_line)
-        file_out.write(';\n')
+        file_out.write(';\n\nCALL `VisualizzazoniGiornaliereFullReBuild`();\n')
         # print(delta_max)
                 
 
