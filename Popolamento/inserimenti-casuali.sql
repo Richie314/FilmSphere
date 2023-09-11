@@ -64,7 +64,7 @@ CREATE PROCEDURE `AggiungiErogazioni`()
 BEGIN
     REPLACE INTO `Erogazione` (`Timestamp`, `Edizione`, `Utente`, `IP`, `InizioConnessione`, `InizioErogazione`, `Server`)
         WITH `VisualizzazioniInCorso` AS (
-            SELECT V.*
+            SELECT V.`Timestamp`, V.`Edizione`, V.`Utente`, V.`IP`, V.`InizioConnessione`
             FROM `Visualizzazione` V
                 INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
             WHERE TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP, `Timestamp`) <= E.`Lunghezza`
