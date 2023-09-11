@@ -223,7 +223,3 @@ BEGIN
 END $$
 
 DELIMITER ;
-
-
-CALL MigliorServer('richie-314', 2, 62364199, 2000000, 16384, 'MPEG-4, H', 'MPEG-4, ALAC', @file_id, @server_id);
-SELECT @file_id, @server_id;

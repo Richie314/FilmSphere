@@ -49,4 +49,4 @@ if __name__ == '__main__':
             number = 0.1
         else:
             number = float(number)
-    generate(max(floor(number * 9000), 100))
+    generate(max(floor(number * 18000), 100))

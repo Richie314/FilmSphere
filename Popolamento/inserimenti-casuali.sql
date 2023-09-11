@@ -52,7 +52,7 @@ BEGIN
             SELECT F.`ID`
             FROM `File` F
             ORDER BY RAND()
-            LIMIT 1
+            LIMIT 16
         )
         SELECT F.`ID`, server_id
         FROM `RandFile` F;
