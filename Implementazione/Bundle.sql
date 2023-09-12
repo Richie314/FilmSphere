@@ -502,14 +502,18 @@ proc_body:BEGIN
 	END IF;
 
 	INSERT INTO `VisualizzazioniGiornaliere` (`Film`, `Paese`, `Data`, `NumeroVisualizzazioni`)
-		SELECT E.`Film`, IFNULL(r.`Paese`, '??') AS "Paese", DATE(V.`Timestamp`) AS "Data", COUNT(*)
-		FROM `Visualizzazione` V
-			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+		WITH `VisFilmData` AS (
+			SELECT V.`IP`, E.`Film`, DATE(V.`Timestamp`) AS "Data", V.`InizioConnessione`
+			FROM `Visualizzazione` V
+				INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+		)
+		SELECT V.`Film`, IFNULL(r.`Paese`, '??') AS "Paese", V.`Data`, COUNT(*)
+		FROM `VisFilmData` V
 			LEFT OUTER JOIN `IPRange` r ON     	
 				(V.`IP` BETWEEN r.`Inizio` AND r.`Fine`) AND 
         		(V.`InizioConnessione` BETWEEN r.`DataInizio` AND IFNULL(r.`DataFine`, CURRENT_TIMESTAMP))
-		WHERE DATE(V.`Timestamp`) = `data_target`
-		GROUP BY E.`Film`, "Paese", "Data";
+		WHERE V.`Data` = `data_target`
+		GROUP BY V.`Film`, "Paese", V.`Data`;
 END ; $$
 
 CREATE PROCEDURE `VisualizzazoniGiornaliereFullReBuild` ()
@@ -517,14 +521,18 @@ BEGIN
 	DECLARE `min_date` DATE DEFAULT SUBDATE(CURRENT_DATE, 32);
 
 	REPLACE INTO `VisualizzazioniGiornaliere` (`Film`, `Paese`, `Data`, `NumeroVisualizzazioni`)
-		SELECT E.`Film`, IFNULL(r.`Paese`, '??') AS "Paese", DATE(V.`Timestamp`) AS "Data", COUNT(*)
-		FROM `Visualizzazione` V
-			INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+		WITH `VisFilmData` AS (
+			SELECT V.`IP`, E.`Film`, DATE(V.`Timestamp`) AS "Data", V.`InizioConnessione`
+			FROM `Visualizzazione` V
+				INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+		)
+		SELECT V.`Film`, IFNULL(r.`Paese`, '??') AS "Paese", V.`Data`, COUNT(*)
+		FROM `VisFilmData` V
 			LEFT OUTER JOIN `IPRange` r ON     	
 				(V.`IP` BETWEEN r.`Inizio` AND r.`Fine`) AND 
         		(V.`InizioConnessione` BETWEEN r.`DataInizio` AND IFNULL(r.`DataFine`, CURRENT_TIMESTAMP))
-		WHERE `min_date` <= DATE(V.`TimeStamp`)
-		GROUP BY E.`Film`, "Paese", "Data";
+		WHERE `min_date` <= V.`Data`
+		GROUP BY V.`Film`, "Paese", V.`Data`;
 END ; $$
 
 CREATE EVENT `VisualizzazioniGiornaliereEvent`
@@ -713,8 +721,7 @@ CREATE TRIGGER `ModificaErogazione`
 BEFORE UPDATE ON Erogazione
 FOR EACH ROW     
 BEGIN
-    SET NEW.InizioErogazione = CURRENT_TIMESTAMP;
-
+    -- SET NEW.InizioErogazione = CURRENT_TIMESTAMP;
     IF NEW.`Server` <> OLD.`Server` THEN
         CALL AggiungiErogazioneServer(NEW.`Server`);
         CALL RimuoviErogazioneServer(OLD.`Server`);

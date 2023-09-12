@@ -77,7 +77,7 @@ ribilancia_body:BEGIN
             FROM `ServerErogazioni` E
                 INNER JOIN `Edizione` Ed ON E.`Edizione` = Ed.`ID`
                 -- Calcolo quanto dovrebbe mancare al termine della visione e controllo che sia sotto i 10 min
-            -- WHERE Ed.`Lunghezza` - TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP, E.`TimeStamp`) <= 600
+            WHERE Ed.`Lunghezza` - TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP, E.`TimeStamp`) <= 600
         )
         SELECT 
             E.`Server`, E.`Edizione`, E.`IP`,
