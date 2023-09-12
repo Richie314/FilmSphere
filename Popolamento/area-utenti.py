@@ -123,7 +123,7 @@ def generate_single_fattura(user, pagata, fatture_pagate, fatture_da_pagare, car
     with open(fatture_pagate, 'a') as file:
         line = '(\'' + user + '\', \'' +  emissione + '\', \'' + pagamento + '\', ' + str(pan) + '),\n'
         file.write(line)
-def generate_connessione(user, connessione, visualizzazione, add_vis=False):
+def generate_connessione(user, connessione):
 
     ip = int.from_bytes(random.randbytes(4), 'big')
     while ip < 16777216:
@@ -137,15 +137,12 @@ def generate_connessione(user, connessione, visualizzazione, add_vis=False):
     with open(connessione, 'a') as file:
         line = f'(\'{user}\', {ip}, \'{inizio}\', \'{fine}\', \'{hw}\'),\n'
         file.write(line)
-    if add_vis:
-        with open(visualizzazione, 'a') as file:
-            file.write(f'CALL `VisualizzazioneCasuale`(\'{user}\', {ip}, \'{inizio}\');\n')
     
 
 def generate_single_user(
         users, pws, nomi, cognomi, 
         fatture_pagate, fatture_non_pagate, carte_di_credito,
-        connessione, visualizzazione, recensione):
+        connessione, recensione):
     user = next_line(users).replace('\'', '').replace('"', '')
     user = user + ''.join(random.choices(population=string.ascii_letters+string.digits,k=random.randint(1, 5)))
     email = rand_email(user=user)
@@ -169,7 +166,7 @@ def generate_single_user(
     # Connessioni e Visualizzazioni
     numero_connessioni = random.randint(0, 10)
     for i in range(0, numero_connessioni):
-        generate_connessione(user, connessione, visualizzazione, random.randint(0, 7) % 2 == 0)
+        generate_connessione(user, connessione)
 
     return sql
 
@@ -187,7 +184,6 @@ def generate(number):
     fatture = 'fatture-non-pagate.sql'
     carte = 'carte-di-credito.sql'
     connessione = 'connessione.sql'
-    visualizzazione = 'visualizzazione.sql'
     recensione = 'recensione.sql'
     
     checkpoint = floor(number / 100)
@@ -204,7 +200,6 @@ def generate(number):
     with open(connessione, 'w') as file_temp:
         file_temp.write('REPLACE INTO `Connessione` (`Utente`, `IP`, `Inizio`, `Fine`, `Hardware`) VALUES\n')
 
-    open(visualizzazione, 'w').close()
     open(recensione, 'w').close()
     
     file_out = open('area-utenti.sql', 'w')
@@ -223,7 +218,6 @@ def generate(number):
             fatture_non_pagate=fatture,
             carte_di_credito=carte,
             connessione=connessione,
-            visualizzazione=visualizzazione,
             recensione=recensione)
         file_out.write(line)
     
@@ -231,7 +225,7 @@ def generate(number):
     passwords.close()
     nomi.close()
     cognomi.close()
-    file_out.write('(\'richie-314\', \'Nome\', \'Cognome\', \'email@prova.it\', \'hash\', \'Pro\', CURRENT_DATE);')
+    file_out.write('(\'richie-314\', \'Nome\', \'Cognome\', \'email@prova.it\', \'hash\', \'Pro\', CURRENT_DATE);\n')
     
     with open(fatture_p, 'a') as file:
         file.write('(\'richie-314\', CURRENT_DATE, NULL, NULL);\n')
@@ -246,7 +240,6 @@ def generate(number):
         fatture,
         fatture_p,
         connessione,
-        visualizzazione,
         recensione
     ]
     for file in files_to_append:
@@ -256,6 +249,7 @@ def generate(number):
                 file_out.write(line)
         # Assets used are removed
         os.remove(file)
+    file_out.write('\nCALL `VisualizzazioniCasuali`();\n')
 
 if __name__ == '__main__':
     if len(sys.argv) < 2:

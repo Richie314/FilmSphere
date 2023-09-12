@@ -28,19 +28,21 @@ BEGIN
         FROM `FilmCasuale` F;
 END $$
 
-DROP PROCEDURE IF EXISTS `VisualizzazioneCasuale` $$
+DROP PROCEDURE IF EXISTS `VisualizzazioniCasuali` $$
 
-CREATE PROCEDURE `VisualizzazioneCasuale`(IN utente VARCHAR(100), IN IP INT UNSIGNED, IN Inizio TIMESTAMP)
+CREATE PROCEDURE `VisualizzazioniCasuali`()
 BEGIN
+    DECLARE `MaxEdizione` INT DEFAULT NULL;
+
+    SELECT MAX(`Edizione`.`ID`) INTO `MaxEdizione` FROM `Edizione`;
+
     REPLACE INTO `Visualizzazione` (`Timestamp`, `Utente`, `IP`, `InizioConnessione`, `Edizione`)
-        WITH `RandEdizione` AS (
-            SELECT E.`ID`
-            FROM `Edizione` E
-            ORDER BY RAND()
-            LIMIT 1
-        )
-        SELECT TIMESTAMPADD(SECOND, FLOOR(RAND() * 1024), Inizio), utente, IP, Inizio, E.`ID`
-        FROM `RandEdizione` E;
+        SELECT 
+            TIMESTAMPADD(SECOND, FLOOR(RAND() * 1024), C.`Inizio`), 
+            C.`Utente`, C.`IP`, C.`Inizio`, 
+            (FLOOR(RAND() * `MaxEdizione`) + 1) AS "Ediz"
+        FROM `Connessione` C
+        WHERE RAND() >= 0.2;
 END $$
 
 DROP PROCEDURE IF EXISTS `RandPoP` $$
@@ -48,19 +50,19 @@ DROP PROCEDURE IF EXISTS `RandPoP` $$
 CREATE PROCEDURE `RandPoP`()
 BEGIN
     DECLARE `FileMaxID` INT DEFAULT 0;
+    DECLARE `ServerMaxID` INT DEFAULT 0;
+    DECLARE `i` INT DEFAULT 0;
     SELECT MAX(`ID`) INTO `FileMaxID` FROM `File`;
+    SELECT MAX(`ID`) INTO `ServerMaxID` FROM `Server`;
 
-    WHILE `FileMaxID` >= 1 DO
-        REPLACE INTO `PoP` (`Server`, `File`)
-            WITH `RandServer` AS (
-                SELECT S.`ID`
-                FROM `Server` S
-                ORDER BY RAND()
-                LIMIT 3
-            )
-            SELECT S.`ID`, `FileMaxID`
-            FROM `RandServer` S;
-        SET `FileMaxID` = `FileMaxID` - 1;
+    SET `i` = 5 * SQRT(`ServerMaxID` * `FileMaxID`); 
+
+    WHILE `i` >= 1 DO
+        REPLACE INTO `PoP` (`Server`, `File`) VALUES (
+            FLOOR(RAND() * `ServerMaxID`) + 1,
+            FLOOR(RAND() * `FileMaxID`) + 1
+        );
+        SET `i` = `i` - 1;
     END WHILE;
 END $$
 
@@ -75,10 +77,11 @@ BEGIN
                 INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
             WHERE TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP, `Timestamp`) <= E.`Lunghezza`
         )
-        SELECT V.*, V.`TimeStamp`, `PoP`.`Server`
+        SELECT V.*, V.`TimeStamp`, IF (RAND() > 0.5, MIN(`PoP`.`Server`), Max(`PoP`.`Server`)) AS "Server"
         FROM `VisualizzazioniInCorso` V
             INNER JOIN `File` F USING(`Edizione`)
-            INNER JOIN `PoP` ON `PoP`.`File` = F.`ID`;
+            INNER JOIN `PoP` ON `PoP`.`File` = F.`ID`
+        GROUP BY V.`Timestamp`, V.`Edizione`, V.`Utente`, V.`IP`, V.`InizioConnessione`;
 END $$
 
 DROP PROCEDURE IF EXISTS `AggiungiGeneri` $$

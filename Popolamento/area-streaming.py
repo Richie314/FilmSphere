@@ -27,7 +27,7 @@ def generate():
     file_out.write('\n')
 
 
-    file_out.write('\nCALL `RandPoP`();\n')
+    file_out.write('\nCALL `RandPoP`();\nCALL `RandPoP`();\n')
     file_out.write('\nCALL `AggiungiErogazioni`();\n')
     
     

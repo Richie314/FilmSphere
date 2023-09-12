@@ -30,7 +30,7 @@ def generate():
             if ip_end - ip_start < 512:
                 continue
 
-            this_line = f'(\'{country_code}\', {ip_start}, {ip_end}, CURRENT_TIMESTAMP - INTERVAL 2 DAY)'
+            this_line = f'(\'{country_code}\', {ip_start}, {ip_end}, CURRENT_TIMESTAMP - INTERVAL 20 DAY)'
             if len(old_line) == 0:
                 # First time we write, no comma
                 old_line = '\n\t' + this_line
