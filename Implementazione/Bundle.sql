@@ -1234,8 +1234,7 @@ BEGIN
             SELECT V.Film, SUM(V.`NumeroVisualizzazioni`) AS "Visualizzazioni"
             FROM `VisualizzazioniGiornaliere` V
             GROUP BY V.`Film`
-            HAVING SUM(V.`NumeroVisualizzazioni`) > 0
-            LIMIT numero_film
+            LIMIT N
         )
         SELECT F.`ID`, V.`Visualizzazioni`
         FROM `Film` F
