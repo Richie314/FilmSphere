@@ -13,7 +13,16 @@ files = [
 
     '../Streaming/CachingPrevisionale.sql',
     '../Streaming/IndividuazioneServer.sql',
-    '../Streaming/RibilanciamentoCarico.sql'
+    '../Streaming/RibilanciamentoCarico.sql',
+
+    '../Operazioni/operazione_1.sql',
+    '../Operazioni/operazione_2.sql',
+    '../Operazioni/operazione_3.sql',
+    '../Operazioni/operazione_4.sql',
+    '../Operazioni/operazione_5.sql',
+    '../Operazioni/operazione_6.sql',
+    '../Operazioni/operazione_7.sql',
+    '../Operazioni/operazione_8.sql'
 ]
 
 def bundle():

@@ -8,7 +8,7 @@ CREATE PROCEDURE `FilmPiuVistiRecentemente`(IN numero_film INT)
 BEGIN
     IF numero_film <= 0 THEN
         SIGNAL SQLSTATE '45000'
-            SET mESSAGE_TEXT = 'Numero di Film non valido';
+            SET MESSAGE_TEXT = 'Numero di Film non valido';
     END IF;
 
     WITH `VisualizzazioniFilm` AS (

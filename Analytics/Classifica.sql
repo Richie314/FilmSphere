@@ -12,6 +12,7 @@ BEGIN
 
     IF p = 1 THEN
 
+        /*
         WITH
             FilmVisualizzazioni AS (
                 SELECT
@@ -31,6 +32,18 @@ BEGIN
         FROM FilmVisualizzazioni
         ORDER BY Visualizzazioni DESC
         LIMIT N;
+        */
+        WITH `VisualizzazioniFilm` AS (
+            SELECT V.Film, SUM(V.`NumeroVisualizzazioni`) AS "Visualizzazioni"
+            FROM `VisualizzazioniGiornaliere` V
+            GROUP BY V.`Film`
+            HAVING SUM(V.`NumeroVisualizzazioni`) > 0
+            LIMIT numero_film
+        )
+        SELECT F.`ID`, V.`Visualizzazioni`
+        FROM `Film` F
+            INNER JOIN `VisualizzazioniFilm` V ON V.`Film` = F.`ID`
+        ORDER BY V.`Vis` DESC;
 
     ELSEIF p = 2 THEN
 
