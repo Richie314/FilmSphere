@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `Critica` (
   CHECK(`Voto` BETWEEN 0.0 AND 5.0)
 ) Engine=InnoDB;
 
-CREATE TABLE IF NOT EXISTS `FilmSphere`.`Genere` (
+CREATE TABLE IF NOT EXISTS `Genere` (
   `Nome` VARCHAR(50) NOT NULL PRIMARY KEY
 ) Engine=InnoDB;
 
@@ -127,8 +127,30 @@ CREATE TABLE IF NOT EXISTS `GenereFilm` (
     ON UPDATE CASCADE ON DELETE CASCADE,
   FOREIGN KEY(`Genere`) REFERENCES `Genere` (`Nome`)
     ON UPDATE CASCADE ON DELETE CASCADE 
-) Engine = InnoDB;
+) Engine=InnoDB;
 
+DROP TRIGGER IF EXISTS `CriticaDataValida`;
+
+DELIMITER $$
+
+CREATE TRIGGER `CriticaDataValida`
+BEFORE INSERT ON `Critica` 
+FOR EACH ROW
+BEGIN
+    DECLARE anno_film YEAR;
+    
+    SELECT F.`Anno` INTO anno_film
+    FROM `Film` F
+    WHERE F.`ID` = NEW.`Film`;
+
+    IF anno_film > YEAR(NEW.`Data`) THEN
+        SIGNAL SQLSTATE '45000'
+          SET MESSAGE_TEXT = 'Data della Critica non valida!';
+    END IF;
+
+END $$
+
+DELIMITER ;
 
 -- ----------------------------
 -- AREA FORMATO
@@ -248,6 +270,7 @@ CREATE TABLE IF NOT EXISTS Restrizione (
 
 DROP TRIGGER IF EXISTS `InserimentoFile`;
 DROP TRIGGER IF EXISTS `ModificaFile`;
+
 DELIMITER $$
 
 CREATE TRIGGER `InserimentoFile`
@@ -294,6 +317,27 @@ BEGIN
             SET MESSAGE_TEXT = 'BitRate non valido!';
     END IF;
 END ; $$
+
+DROP TRIGGER IF EXISTS `AnnoEdizioneValido` $$
+
+CREATE TRIGGER `AnnoEdizioneValido`
+BEFORE INSERT ON `Edizione`
+FOR EACH ROW
+BEGIN
+
+    DECLARE anno_film YEAR;
+
+    SELECT F.`Anno` INTO anno_film
+    FROM `Film` F
+    WHERE F.`ID` = NEW.`Film`;
+
+    IF anno_film > YEAR(NEW.`Anno`) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Anno dell\'Edizione non Valido';
+    END IF;
+
+END $$
+
 
 DELIMITER ;
 
@@ -1006,3 +1050,1365 @@ BEGIN
 END ; $$
 
 DELIMITER ;
+
+USE `FilmSphere`;
+
+DROP PROCEDURE IF EXISTS `BilanciamentoDelCarico`;
+DELIMITER //
+CREATE PROCEDURE `BilanciamentoDelCarico`(
+    M INT,
+    N INT
+)
+BEGIN
+
+    -- 1) Ottieni Tabella Visualizzazione + Colonna Paese
+    -- 2) Ottieni Tabella T(Edizione, Paese, Visualizzazioni)
+    -- 3) Per ogni Paese prendi le N Edizioni piu' visualizzate
+    --      3.1) Fai un Ranking ordinato per Visualizzazioni e partizionato per Paese
+    --      3.2) Seleziona solo i primi N per ogni Partizione
+    -- 4) Per ogni Paese si individuano gli M server piu' vicini
+    --      4.1) Fai un ranking di Server, Paese ordinato per distanza e partizionato per Paese
+    --      4.2) Selezioni i primi M per ogni Paese
+    -- 5) Creare una Tabella, senza duplicati, T(Edizione, Server) facendo il JOIN tra la 3 e la 4
+    -- 6) Si crea una Tabella, partendo dalla precedente, T(File, Server) contenente ogni File di Edizione ma tale per cui non vi sia un P.o.P tra File e Server
+    --      6.1) Fai il JOIN con File e ottieni T(File, Server)
+    --      6.2) Imponi che non debba esistere un occorrenza di P.o.P avente stesso File e Server
+
+
+    WITH
+        -- 1) Ottieni Tabella Visualizzazione + Colonna Paese
+        VisualizzazionePaese AS (
+            SELECT
+                V.*,
+                Ip2PaeseStorico(V.IP, V.InizioConnessione) AS Paese
+            FROM Visualizzazione V
+        ),
+
+        -- 2) Ottieni Tabella T(Edizione, Paese, Visualizzazioni)
+        EdizionePaeseVisualizzazioni AS (
+            SELECT
+                Edizione,
+                Paese,
+                COUNT(*) AS Visualizzazioni
+            FROM VisualizzazionePaese
+            GROUP BY Edizione, Paese
+        ),
+
+        -- 3) Per ogni Paese prendi le N Edizioni piu' visualizzate
+        RankingVisualizzazioniPerPaese AS (
+            SELECT
+                Edizione,
+                Paese,
+                RANK() OVER (PARTITION BY Paese ORDER BY Visualizzazioni DESC) AS rk
+            FROM EdizionePaeseVisualizzazioni
+        ),
+        EdizioniTargetPerPaese AS (
+            SELECT
+                Edizione,
+                Paese
+            FROM RankingVisualizzazioniPerPaese
+            WHERE rk <= N
+        ),
+
+        -- 4) Per ogni Paese si individuano gli M server piu' vicini
+        RankingPaeseServer AS (
+            SELECT
+                Server,
+                Paese,
+                RANK() OVER(PARTITION BY Paese ORDER BY ValoreDistanza) AS rk
+            FROM DistanzaPrecalcolata
+        ),
+        ServerTargetPerPaese AS (
+            SELECT
+                Server,
+                Paese
+            FROM RankingPaeseServer
+            WHERE rk <= M
+        ),
+
+        -- 5) Creare una Tabella, senza duplicati, T(Edizione, Server) facendo il JOIN tra la 3 e la 4
+        EdizionePaese AS (
+            SELECT DISTINCT
+                Edizione,
+                Server
+            FROM ServerTargetPerPaese SP
+            INNER JOIN EdizioniTargetPerPaese EP
+                USING(Paese)
+        )
+
+    -- 6)  Si crea una Tabella, partendo dalla precedente, T(File, Server) contenente ogni File di Edizione ma tale per cui non vi sia un P.o.P tra File e Server
+    SELECT
+        F.ID AS File,
+        EP.Server
+    FROM EdizionePaese EP
+    INNER JOIN File F
+        ON F.Edizione = EP.Edizione
+    WHERE NOT EXISTS (
+        SELECT *
+        FROM PoP
+        WHERE PoP.File = F.ID
+        AND PoP.Server = EP.Server
+    );
+
+
+END
+//
+DELIMITER ;
+
+USE `FilmSphere`;
+
+DROP PROCEDURE IF EXISTS `Classifica`;
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS `Classifica`(
+    N INT,
+    codice_paese CHAR(2),
+    tipo_abbonamento VARCHAR(50),
+    P INT -- 1 -> Film   2 -> Edizioni
+)
+BEGIN
+
+    IF p = 1 THEN
+
+        WITH
+            FilmVisualizzazioni AS (
+                SELECT
+                    E.Film,
+                    COUNT(*) AS Visualizzazioni
+                FROM Visualizzazione V
+                INNER JOIN Utente U
+                    ON V.Utente = U.Codice
+                INNER JOIN Edizione E
+                    ON E.ID = V.Edizione
+                WHERE U.Abbonamento = tipo_abbonamento
+                AND Ip2PaeseStorico(V.IP, V.InizioConnessione) = codice_paese
+                GROUP BY E.Film
+            )
+        SELECT
+            Film
+        FROM FilmVisualizzazioni
+        ORDER BY Visualizzazioni DESC
+        LIMIT N;
+
+    ELSEIF p = 2 THEN
+
+        WITH
+            FilmVisualizzazioni AS (
+                SELECT
+                    V.Edizione,
+                    COUNT(*) AS Visualizzazioni
+                FROM Visualizzazione V
+                INNER JOIN Utente U
+                    ON V.Utente = U.Codice
+                WHERE U.Abbonamento = tipo_abbonamento
+                AND Ip2PaeseStorico(V.IP, V.InizioConnessione) = codice_paese
+                GROUP BY V.Edizione
+            )
+        SELECT
+            Edizione
+        FROM FilmVisualizzazioni
+        ORDER BY Visualizzazioni DESC
+        LIMIT N;
+
+    ELSE
+
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Parametro P non Valido';
+
+    END IF;
+
+END
+//
+DELIMITER ;
+
+DROP FUNCTION IF EXISTS `ValutazioneAttore`;
+DELIMITER //
+CREATE FUNCTION `ValutazioneAttore`(
+    Nome VARCHAR(50),
+    Cognome VARCHAR(50)
+    )
+RETURNS FLOAT 
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
+
+    DECLARE sum_v FLOAT;
+    DECLARE sum_p FLOAT;
+    DECLARE n INT;
+
+    SET sum_v := (
+        SELECT
+            SUM(F.MediaRecensioni)
+        FROM Artista A
+        INNER JOIN Recitazione R
+            ON R.NomeAttore = A.Nome AND R.CognomeAttore = A.Cognome
+        INNER JOIN Film F
+            ON F.ID = R.Film
+        WHERE A.Nome = Nome AND A.Cognome = Cognome
+    );
+
+    SET sum_p := (
+        SELECT
+            COUNT(DISTINCT VP.Film)
+        FROM Artista A
+        INNER JOIN Recitazione R
+            ON R.NomeAttore = A.Nome AND R.CognomeAttore = A.Cognome
+        INNER JOIN VincitaPremio VP
+            ON VP.Film = R.Film
+        WHERE A.Nome = Nome AND A.Cognome = Cognome
+    );
+
+    SET n := (
+        SELECT
+            COUNT(*)
+        FROM VincitaPremio
+        WHERE NomeArtista = Nome AND CognomeArtista = CognomeArtista
+    );
+
+    RETURN sum_v + sum_p * 5 + n * 100.0;
+
+END //
+DELIMITER ;
+
+
+DROP PROCEDURE IF EXISTS `MiglioreAttore`;
+DELIMITER //
+CREATE PROCEDURE `MiglioreAttore`()
+BEGIN
+
+    WITH
+        AttoreValutazione AS (
+            SELECT
+                Nome, Cognome,
+                ValutazioneAttore(Nome, Cognome) AS Valutazione
+            FROM Artista
+            WHERE Popolarita <= 2.5
+        )
+    SELECT
+        Nome, Cognome
+    FROM AttoreValutazione
+    WHERE Valutazione = (
+        SELECT MAX(Valutazione)
+        FROM AttoreValutazione
+    );
+
+END //
+DELIMITER ;
+
+
+
+
+
+
+
+DROP FUNCTION IF EXISTS `ValutazioneRegista`;
+DELIMITER //
+CREATE FUNCTION `ValutazioneRegista`(
+    Nome VARCHAR(50),
+    Cognome VARCHAR(50)
+    )
+RETURNS FLOAT 
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
+
+    DECLARE sum_v FLOAT;
+    DECLARE sum_p FLOAT;
+    DECLARE n INT;
+
+    SET sum_v := (
+        SELECT
+            SUM(MediaRecensioni)
+        FROM Film
+        WHERE NomeRegista = Nome AND CognomeRegista = Cognome
+    );
+
+    SET sum_p := (
+        SELECT
+            COUNT(DISTINCT VP.Film)
+        FROM Film F
+        INNER JOIN VincitaPremio VP
+            ON VP.Film = F.ID
+        WHERE F.NomeRegista = Nome AND F.CognomeRegista = Cognome
+    );
+
+    SET n := (
+        SELECT
+            COUNT(*)
+        FROM VincitaPremio
+        WHERE NomeArtista = Nome AND CognomeArtista = CognomeArtista
+    );
+
+    RETURN sum_v + sum_p * 5 + n * 100.0;
+
+END
+//
+DELIMITER ;
+
+DROP PROCEDURE IF EXISTS `MiglioreRegista`;
+DELIMITER //
+CREATE PROCEDURE `MiglioreRegista`()
+BEGIN
+
+    WITH
+        RegistaValutazione AS (
+            SELECT
+                Nome, Cognome,
+                ValutazioneRegista(Nome, Cognome) AS Valutazione
+            FROM Artista
+            WHERE Popolarita <= 2.5
+        )
+    SELECT
+        Nome, Cognome
+    FROM RegistaValutazione
+    WHERE Valutazione = (
+        SELECT MAX(Valutazione)
+        FROM RegistaValutazione
+    );
+
+END //
+DELIMITER ;
+
+USE `FilmSphere`;
+
+DROP PROCEDURE IF EXISTS `RaccomandazioneContenuti`;
+DELIMITER //
+CREATE PROCEDURE `RaccomandazioneContenuti`(
+    IN codice_utente VARCHAR(100),
+    IN numero_film INT
+)
+BEGIN
+
+    WITH
+        FilmRatingUtente AS (
+            SELECT
+                ID,
+                RatingUtente(ID, codice_utente) AS Rating
+            FROM Film
+        )
+    SELECT ID
+    FROM FilmRatingUtente
+    ORDER BY Rating DESC, ID
+    LIMIT numero_film;
+
+
+END
+//
+DELIMITER ;
+
+USE `FilmSphere`;
+
+DROP FUNCTION IF EXISTS `RatingFilm`;
+DELIMITER //
+CREATE FUNCTION IF NOT EXISTS `RatingFilm`(
+    `id_film` INT
+)
+RETURNS FLOAT NOT DETERMINISTIC
+    READS SQL DATA
+BEGIN
+
+    DECLARE RU FLOAT;
+    DECLARE RC FLOAT;
+    DECLARE PA FLOAT;
+    DECLARE PR FLOAT;
+    DECLARE PV FLOAT;
+    DECLARE RMU FLOAT;
+
+    SET RU := (
+        SELECT
+            IFNULL(MediaRecensioni, 0)
+        FROM Film
+        WHERE ID = id_film
+    );
+
+    SET RC := (
+        SELECT
+            IFNULL(AVG(Voto), 0)
+        FROM Critica
+        WHERE Film = id_film
+    );
+
+    SET PA := (
+        SELECT
+            IFNULL(AVG(Popolarita), 0)
+        FROM Artista A
+        INNER JOIN Recitazione R
+        ON A.Nome = R.NomeAttore AND A.Cognome = R.CognomeAttore
+        WHERE Film = id_film
+    );
+
+    SET PR := (
+        SELECT
+            IFNULL(Popolarita, 0)
+        FROM Artista A
+        INNER JOIN Film F
+        ON F.NomeRegista = A.Nome AND F.CognomeRegista = A.Cognome
+        WHERE ID = id_film
+    );
+
+    SET PV := (
+        SELECT
+            COUNT(*)
+        FROM VincitaPremio
+        WHERE Film = id_film
+    );
+
+    SET RMU := (
+        SELECT
+            IFNULL(MAX(F2.MediaRecensioni), 0)
+        FROM Film F1
+        INNER JOIN GenereFilm GF1
+        ON GF1.Film = F1.ID
+        INNER JOIN GenereFilm GF2
+        ON GF2.Genere = GF1.Genere
+        INNER JOIN Film F2
+        ON GF2.Film = F2.ID
+        WHERE F1.ID = id_film
+    );
+
+    RETURN FLOOR(0.5 * (RU + RC) + 0.1 * (PA + PR) + 0.1 * PV + (RU/RMU)) / 2;
+
+END
+//
+DELIMITER ;
+
+USE `FilmSphere`;
+
+
+DROP FUNCTION IF EXISTS `RatingUtente`;
+DELIMITER //
+CREATE FUNCTION `RatingUtente`(
+    id_film INT,
+    id_utente VARCHAR(100)
+)
+RETURNS FLOAT NOT DETERMINISTIC
+    READS SQL DATA
+BEGIN
+
+    DECLARE G1 VARCHAR(50);
+    DECLARE G2 VARCHAR(50);
+    DECLARE A1_Nome VARCHAR(50);
+    DECLARE A1_Cognome VARCHAR(50);
+    DECLARE A2_Nome VARCHAR(50);
+    DECLARE A2_Cognome VARCHAR(50);
+    DECLARE A3_Nome VARCHAR(50);
+    DECLARE A3_Cognome VARCHAR(50);
+    DECLARE L1 VARCHAR(50);
+    DECLARE L2 VARCHAR(50);
+    DECLARE R_Nome VARCHAR(50);
+    DECLARE R_Cognome VARCHAR(50);
+    DECLARE RA INT;
+
+    DECLARE G1_b TINYINT;
+    DECLARE G2_b TINYINT;
+    DECLARE A1_b TINYINT;
+    DECLARE A2_b TINYINT;
+    DECLARE A3_b TINYINT;
+    DECLARE L1_b TINYINT;
+    DECLARE L2_b TINYINT;
+    DECLARE R_b TINYINT;
+    DECLARE RA_b TINYINT;
+
+    -- ------------------------
+    -- Determino i Preferiti
+    -- ------------------------
+
+    -- L'idea e' di creare delle classifica come Temporary Table
+    -- per poi andare a selezionare l'i-esimo preferito
+
+    DROP TEMPORARY TABLE IF EXISTS GeneriClassifica;
+    CREATE TEMPORARY TABLE IF NOT EXISTS GeneriClassifica
+    WITH
+        GenereVisualizzazioni AS (
+            SELECT
+                Genere,
+                COUNT(*) AS N
+            FROM Visualizzazione V
+            INNER JOIN Edizione E
+                ON E.ID = V.Edizione
+            INNER JOIN GenereFilm GF
+                ON GF.Film = E.Film
+            WHERE V.Utente = id_utente
+            GROUP BY Genere
+        )
+    SELECT
+        Genere,
+        RANK() OVER (ORDER BY N DESC, Genere) as Rk
+    FROM GenereVisualizzazioni;
+
+    SET G1 := (
+        SELECT
+            Genere
+        FROM GeneriClassifica
+        WHERE rk = 1
+    );
+
+    SET G2 := (
+        SELECT
+            Genere
+        FROM GeneriClassifica
+        WHERE rk = 2
+    );
+
+
+    DROP TEMPORARY TABLE IF EXISTS AttoriClassifica;
+    CREATE TEMPORARY TABLE IF NOT EXISTS AttoriClassifica
+        WITH
+            AttoriVisualizzazioni AS (
+                SELECT
+                    R.NomeAttore,
+                    R.CognomeAttore,
+                    COUNT(*) AS N
+                FROM Visualizzazione V
+                INNER JOIN Edizione E
+                    ON E.ID = V.Edizione
+                INNER JOIN Recitazione R
+                    ON R.Film = E.Film
+                WHERE V.Utente = id_utente
+                GROUP BY R.NomeAttore, R.CognomeAttore
+            )
+        SELECT
+            NomeAttore, CognomeAttore,
+            RANK() OVER(ORDER BY N DESC, NomeAttore, CognomeAttore) AS rk
+        FROM AttoriVisualizzazioni;
+
+    SET A1_Nome := (
+        SELECT
+            NomeAttore
+        FROM AttoriClassifica
+        WHERE rk = 1
+    );
+
+    SET A1_Cognome := (
+        SELECT
+            CognomeAttore
+        FROM AttoriClassifica
+        WHERE rk = 1
+    );
+
+    SET A2_Nome := (
+        SELECT
+            NomeAttore
+        FROM AttoriClassifica
+        WHERE rk = 2
+    );
+
+    SET A2_Cognome := (
+        SELECT
+            CognomeAttore
+        FROM AttoriClassifica
+        WHERE rk = 2
+    );
+
+    SET A3_Nome := (
+        SELECT
+            NomeAttore
+        FROM AttoriClassifica
+        WHERE rk = 3
+    );
+
+    SET A3_Cognome := (
+        SELECT
+            CognomeAttore
+        FROM AttoriClassifica
+        WHERE rk = 3
+    );
+
+    DROP TEMPORARY TABLE IF EXISTS LinguaClassifica;
+    CREATE TEMPORARY TABLE IF NOT EXISTS LinguaClassifica
+        WITH
+            LinguaVisualizzazioni AS (
+                SELECT
+                    D.Lingua,
+                    COUNT(*) AS N
+                FROM Visualizzazione V
+                INNER JOIN File F
+                    ON F.Edizione = V.Edizione
+                INNER JOIN Doppiaggio D
+                    ON D.File = F.ID
+                WHERE V.Utente = id_utente
+                GROUP BY D.Lingua
+            )
+        SELECT
+            Lingua,
+            RANK() OVER(ORDER BY N DESC, Lingua) AS rk
+        FROM LinguaVisualizzazioni;
+
+    SET L1 := (
+        SELECT
+            Lingua
+        FROM LinguaClassifica
+        WHERE rk = 1
+    );
+
+    SET L2 := (
+        SELECT
+            Lingua
+        FROM LinguaClassifica
+        WHERE rk = 2
+    );
+
+    DROP TEMPORARY TABLE IF EXISTS RegistaUtente;
+    CREATE TEMPORARY TABLE IF NOT EXISTS RegistaUtente
+        WITH
+            RegistaVisualizzazioni AS (
+                SELECT
+                    F.NomeRegista,
+                    F.CognomeRegista,
+                    COUNT(*) AS N
+                FROM Visualizzazione V
+                INNER JOIN Edizione E
+                    ON V.Edizione = E.ID
+                INNER JOIN Film F
+                    ON F.ID = E.Film
+                WHERE V.Utente = id_utente
+                GROUP BY F.NomeRegista, F.CognomeRegista
+            )
+        SELECT
+            NomeRegista,
+            CognomeRegista
+        FROM RegistaVisualizzazioni
+        ORDER BY N DESC, CognomeRegista, NomeRegista
+        LIMIT 1;
+
+    SET R_Nome := (
+        SELECT NomeRegista
+        FROM RegistaUtente
+    );
+
+    SET R_Cognome := (
+        SELECT NomeRegista
+        FROM RegistaUtente
+    );
+
+    SET RA := (
+        WITH
+            RapportoAspettoVisualizzazioni AS (
+                SELECT
+                    E.RapportoAspetto,
+                    COUNT(*) AS N
+                FROM Visualizzazione V
+                INNER JOIN Edizione E
+                    ON E.ID = V.Edizione
+                WHERE V.Utente = id_utente
+                GROUP BY E.RapportoAspetto
+            )
+        SELECT
+            RapportoAspetto
+        FROM RapportoAspettoVisualizzazioni
+        ORDER BY N DESC, RapportoAspetto
+        LIMIT 1
+    );
+
+
+    -- -------------------------------
+    -- Determino i Valori Booleani
+    -- -------------------------------
+
+    -- L'idea e' di creare delle Temporay Table contenente i vari parametri di interesse del
+    -- film (e.g. Generi) per poi andare a determinare quali preferenze sono soddisfatte
+
+    DROP TEMPORARY TABLE IF EXISTS GeneriFilm;
+    CREATE TEMPORARY TABLE IF NOT EXISTS GeneriFilm
+        SELECT Genere
+        FROM GenereFilm
+        WHERE Film = id_film;
+
+    DROP TEMPORARY TABLE IF EXISTS AttoriFilm;
+    CREATE TEMPORARY TABLE IF NOT EXISTS AttoriFilm
+        SELECT
+            NomeAttore,
+            CognomeAttore
+        FROM Recitazione
+        WHERE Film = id_film;
+
+    DROP TEMPORARY TABLE IF EXISTS LingueFilm;
+    CREATE TEMPORARY TABLE IF NOT EXISTS LingueFilm
+        SELECT DISTINCT
+            D.Lingua
+        FROM Edizione E
+        INNER JOIN File F
+            ON F.Edizione = E.ID
+        INNER JOIN Doppiaggio D
+            ON D.File = F.ID
+        WHERE E.Film = id_film;
+
+    SET G1_b = (
+        SELECT COUNT(*)
+        FROM GeneriFilm
+        WHERE Genere = G1
+    );
+
+    SET G2_b = (
+        SELECT COUNT(*)
+        FROM GeneriFilm
+        WHERE Genere = G2
+    );
+
+    SET A1_b = (
+        SELECT COUNT(*)
+        FROM AttoriFilm
+        WHERE NomeAttore = A1_Nome
+        AND CognomeAttore = A1_Cognome
+    );
+
+    SET A2_b = (
+        SELECT COUNT(*)
+        FROM AttoriFilm
+        WHERE NomeAttore = A2_Nome
+        AND CognomeAttore = A2_Cognome
+    );
+
+    SET A3_b = (
+        SELECT COUNT(*)
+        FROM AttoriFilm
+        WHERE NomeAttore = A3_Nome
+        AND CognomeAttore = A3_Cognome
+    );
+
+    SET L1_b = (
+        SELECT COUNT(*)
+        FROM LingueFilm
+        WHERE Lingua = L1
+    );
+
+    SET L2_b = (
+        SELECT COUNT(*)
+        FROM LingueFilm
+        WHERE Lingua = L2
+    );
+
+    SET R_b = (
+        SELECT COUNT(*)
+        FROM Film
+        WHERE ID = id_film
+        AND NomeRegista = R_Nome
+        AND CognomeRegista = R_Cognome
+    );
+
+    SET RA_b = (
+        SELECT COUNT(*)
+        FROM (
+            SELECT DISTINCT
+                RapportoAspetto
+            FROM Edizione
+            WHERE Film = id_film
+            AND RapportoAspetto = RA
+        ) AS T
+    );
+
+    RETURN FLOOR(2 * G1_b + G2_b + 1.5 * A1_b + A2_b + 0.5 * A3_b + L1_b + L2_b + R_b + RA_b) / 2;
+
+END
+//
+DELIMITER ;
+
+USE `FilmSphere`;
+
+DROP PROCEDURE IF EXISTS `CachingPrevisionale`;
+DELIMITER //
+CREATE PROCEDURE IF NOT EXISTS `CachingPrevisionale`(
+    X INT,
+    M INT,
+    N INT
+)
+BEGIN
+
+    -- 1) Per ogni Utente si considera il Paese dal quale si connette di piu' e dal Paese gli N Server piu' vicini
+    -- 2) Per ogni coppia Utente, Paese si considerano gli M File con probabilità maggiore di essere guardati, ciascuno con la probabilità di essere guardato
+    -- 3) Si raggruppa in base al Server e ad ogni File, sommando, per ogni Server-File la probabilit`a che sia guardato dall’Utente moltiplicata
+    --    per un numero che scala in maniera decrescente in base al ValoreDistanza tra Paese e Server
+    -- 4) Si restituiscono le prime X coppie Server-File con somma maggiore per le quali non esiste gi`a un P.o.P.
+    WITH
+        UtentePaeseVolte AS (
+            SELECT
+                Utente,
+                Paese,
+                COUNT(*) AS Volte
+            FROM (
+                SELECT
+                    Utente,
+                    Ip2PaeseStorico(IP, InizioConnessione) AS Paese
+                FROM Visualizzazione
+            ) AS T
+            GROUP BY Utente, Paese
+        ),
+        UtentePaesePiuFrequente AS (
+            SELECT
+                Utente,
+                Paese
+            FROM UtentePaeseVolte UPV
+            WHERE UPV.Volte = (
+                SELECT MAX(UPV2.Volte)
+                FROM UtentePaeseVolte UPV2
+                WHERE UPV2.Utente = UPV.Utente
+            )
+        ),
+        RankingPaeseServer AS (
+            SELECT
+                Server,
+                Paese,
+                RANK() OVER(PARTITION BY Paese ORDER BY ValoreDistanza) AS rk
+            FROM DistanzaPrecalcolata
+        ),
+        ServerTargetPerPaese AS (
+            SELECT
+                Server,
+                Paese
+            FROM RankingPaeseServer
+            WHERE rk <= N
+        ),
+        UtentePaeseServer AS (
+            SELECT
+                UP.Utente,
+                UP.Paese,
+                SP.Server,
+                DP.ValoreDistanza
+            FROM UtentePaesePiuFrequente UP
+            INNER JOIN ServerTargetPerPaese SP
+                USING(Paese)
+            INNER JOIN DistanzaPrecalcolata DP
+                ON DP.Server = SP.Server AND DP.Paese = UP.Paese
+        ),
+
+        -- 2) Per ogni coppia Utente, Paese si considerano gli M File con probabilità maggiore di essere guardati, ciascuno con la probabilità di essere guardato
+        FilmRatingUtente AS (
+            SELECT
+                F.ID,
+                U.Codice,
+                RatingUtente(F.ID, U.Codice) AS Rating
+            FROM Film F
+            NATURAL JOIN Utente U
+        ),
+        10FilmUtente AS (
+            SELECT
+                ID AS Film,
+                Codice AS Utente,
+                (CASE
+                    WHEN rk = 1 THEN 30.0
+                    WHEN rk = 2 THEN 22.0
+                    WHEN rk = 3 THEN 11.0
+                    WHEN rk = 4 THEN 9.0
+                    WHEN rk = 5 THEN 8.0
+                    WHEN rk = 6 THEN 6.0
+                    WHEN rk = 7 THEN 5.0
+                    WHEN rk = 8 THEN 4.0
+                    WHEN rk = 9 THEN 3.0
+                    WHEN rk = 10 THEN 2.0
+                END) AS Probabilita
+            FROM (
+                SELECT
+                    ID,
+                    Codice,
+                    RANK() OVER(PARTITION BY Codice ORDER BY Rating DESC ) AS rk
+                FROM FilmRatingUtente
+            ) AS T
+            WHERE rk <= 10
+        ),
+        FilmFile AS (
+            SELECT
+                F.ID AS Film,
+                FI.ID AS File,
+                F2FI.N AS NumeroFile
+            FROM Film AS F
+            INNER JOIN Edizione E
+                ON E.Film = F.ID
+            INNER JOIN File FI
+                ON FI.Edizione = E.ID
+            INNER JOIN (
+                -- Tabella avente Film e numero di File ad esso associati
+                SELECT
+                    F1.ID AS Film,
+                    COUNT(*) AS N
+                FROM Film AS F1
+                INNER JOIN Edizione E1
+                    ON E1.Film = F1.ID
+                INNER JOIN File FI1
+                    ON FI1.Edizione = E1.ID
+                GROUP BY F1.ID
+            ) AS F2FI
+                ON F2FI.Film = F.ID
+
+        ),
+        FileUtente AS (
+            SELECT
+                Utente,
+                File,
+                Probabilita / NumeroFile AS Probabilita
+            FROM 10FilmUtente
+            NATURAL JOIN FilmFile
+        ),
+        MFilePerUtente AS (
+            SELECT
+                Utente,
+                File,
+                Probabilita
+            FROM (
+                SELECT
+                    *,
+                    RANK() OVER(PARTITION BY Utente ORDER BY Probabilita DESC) AS rk
+                FROM FileUtente
+            ) AS T
+            WHERE rk <= M
+        ),
+
+        ServerFile AS (
+            SELECT
+                File,
+                Server,
+                SUM(Probabilita * (1 + 1 / ValoreDistanza)) AS Importanza   -- MODIFICA VALORI PER QUESTA ESPRESSIONE
+            FROM MFilePerUtente FU
+            INNER JOIN UtentePaeseServer SU
+                USING(Utente)
+            GROUP BY File, Server
+        )
+    SELECT
+        File,
+        Server
+    FROM ServerFile SF
+    WHERE NOT EXISTS (
+        SELECT *
+        FROM PoP
+        WHERE PoP.Server = SF.Server AND PoP.File = SF.File
+    )
+    ORDER BY Importanza DESC
+    LIMIT X;
+
+
+
+
+END
+//
+
+
+USE `FilmSphere`;
+
+DROP FUNCTION IF EXISTS `MathMap`;
+DROP FUNCTION IF EXISTS `StrListContains`;
+DROP FUNCTION IF EXISTS `CalcolaDelta`;
+DROP PROCEDURE IF EXISTS `MigliorServer`;
+DROP PROCEDURE IF EXISTS `TrovaMigliorServer`;
+
+DELIMITER $$
+
+CREATE PROCEDURE `MigliorServer` (
+
+    -- Dati sull'utente e la connessione
+    IN id_utente VARCHAR(100), -- Codice di Utente
+    IN id_edizione INT, -- ID di Edizione che si intende guardare
+    IN ip_connessione INT UNSIGNED, -- Indirizzo IP4 della connessione
+    
+    -- Dati su capacita' dispositivo client e potenza della sua connessione
+    IN MaxBitRate FLOAT,
+    IN MaxRisoluz BIGINT,
+
+    -- Liste di encoding video e audio supportati dal client, separati da ','
+    IN ListaVideoEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
+    IN ListaAudioEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
+
+    -- Parametri restituiti
+    OUT FileID INT, -- ID del File da guardare
+    OUT ServerID INT -- Server dove tale File e' presente
+) BEGIN
+    DECLARE paese_utente CHAR(2) DEFAULT '??';
+    DECLARE abbonamento_utente VARCHAR(50) DEFAULT NULL;
+    DECLARE max_definizione BIGINT DEFAULT NULL;
+
+    IF id_utente IS NULL OR id_edizione IS NULL THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Parametri NULL non consentiti';
+    END IF;
+
+
+    SELECT A.`Tipo`, A.`Definizione`
+        INTO abbonamento_utente, max_definizione
+    FROM `Abbonamento` A
+        INNER JOIN `Utente` U ON `U`.`Abbonamento` = A.`Tipo`
+    WHERE U.`Codice` = id_utente;
+
+    IF abbonamento_utente IS NULL THEN
+         SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = 'Utente non trovato';
+    END IF;
+
+    IF EXISTS (
+        SELECT *
+        FROM `Esclusione`
+            INNER JOIN `GenereFilm` USING (`Genere`)
+            INNER JOIN `Edizione` USING (`Film`)
+        WHERE `ID` = id_edizione AND `Abbonamento` = abbonamento_utente) THEN
+        
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Contenuto non disponibile nel tuo piano di abbonamento!';
+    END IF;
+
+    -- Calcolo il Paese dai Range
+    SET paese_utente = Ip2Paese(ip_connessione);
+
+    IF EXISTS (
+        SELECT *
+        FROM `Restrizione` r
+        WHERE r.`Edizione` = id_edizione AND r.`Paese` = paese_utente) THEN
+        
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Contenuto non disponibile nella tua regione!';
+    END IF;
+
+    CALL `TrovaMigliorServer` (
+        id_edizione, paese_utente, 
+        max_definizione, MaxBitRate, MaxRisoluz, 
+        ListaVideoEncodings, ListaAudioEncodings, NULL, @File, @Server, @Score);
+    SET FileID = @File;
+    SET ServerID = @Server;
+    -- SELECT @File, @Server, @Score, paese_utente, max_definizione;
+    -- @Score non viene restituito
+END $$
+
+CREATE PROCEDURE `TrovaMigliorServer` (
+
+    -- Dati sulla connessione
+    IN id_edizione INT, -- ID di Edizione che si intende guardare
+    IN paese_utente CHAR(2), -- Paese dell'Utente
+    IN MaxRisoluzAbbonamento BIGINT,
+    
+    -- Dati su capacita' dispositivo client e potenza della sua connessione
+    IN MaxBitRate FLOAT, -- NULL significa ricercare il minor BitRate possibile
+    IN MaxRisoluz BIGINT, -- NULL significa ricercare la minor Risoluzione possibile
+
+    -- Liste di encoding video e audio supportati dal client, separati da ','
+    IN ListaVideoEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
+    IN ListaAudioEncodings VARCHAR(256), -- NULL significa qualunque encoding e' supportato
+
+    IN ServerDaEscludere VARCHAR(32), -- Lista di ID di Server che per vari motivi vanno esclusi
+
+    -- Parametri restituiti
+    OUT FileID INT, -- ID del File da guardare
+    OUT ServerID INT, -- Server dove tale File e' presente
+    OUT Score INT -- Punteggio della scelta
+) BEGIN
+    DECLARE max_definizione BIGINT DEFAULT NULL;
+    DECLARE wRis FLOAT DEFAULT 5.0;
+    DECLARE wRate FLOAT DEFAULT 3.0;
+    DECLARE wPos FLOAT DEFAULT 12.0;
+    DECLARE wCarico FLOAT DEFAULT 10.0;
+
+
+    -- Prima di calcolare il Server migliore individuo le caratteristiche che deve avere il File
+    
+    SET max_definizione = IFNULL(
+        LEAST(MaxRisoluz, IFNULL(MaxRisoluzAbbonamento, MaxRisoluz)), 
+        0);
+
+    -- SELECT max_definizione, MaxBitRate, ListaAudioEncodings, ListaVideoEncodings, ServerDaEscludere, paese_utente;
+
+    WITH `FileDisponibili` AS (
+        SELECT 
+            F.`ID`, 
+            CalcolaDelta(max_definizione, F.`Risoluzione`) AS "DeltaRis", 
+            CalcolaDelta(MaxBitRate, F.`BitRate`) AS "DeltaRate"
+        FROM `File` F
+            INNER JOIN Edizione E ON E.`ID` = F.`Edizione`
+        WHERE 
+            E.`ID` = id_edizione AND 
+            (ListaAudioEncodings IS NULL OR StrListContains(ListaAudioEncodings, F.`FamigliaAudio`)) AND
+            (ListaVideoEncodings IS NULL OR StrListContains(ListaVideoEncodings, F.`FamigliaVideo`))
+    ), `ServerDisponibili` AS (
+        SELECT S.`ID`, S.`CaricoAttuale`, S.`MaxConnessioni`
+        FROM `Server` S
+        WHERE S.`CaricoAttuale` < 1 AND NOT StrListContains(ServerDaEscludere, S.`ID`) 
+    ), `FileServerScore` AS (
+        SELECT 
+            F.`ID`,
+            P.`Server`,
+            MathMap(F.`DeltaRis`, 0.0, 16384, 0, wRis) AS "ScoreRis",
+            MathMap(F.`DeltaRate`, 0.0, 1.4 * 1024 * 1024 * 1024, 0, wRate) AS "ScoreRate",
+            MathMap(D.`ValoreDistanza`, 0.0, 40000, 0, wPos) AS "ScoreDistanza",
+            MathMap(S.`CaricoAttuale`, 0.0, S.`MaxConnessioni`, 0, wCarico) AS "ScoreCarico"
+        FROM `FileDisponibili` F
+            INNER JOIN `PoP` P ON P.`File` = F.`ID`
+            INNER JOIN `DistanzaPrecalcolata` D USING(`Server`)
+            INNER JOIN `ServerDisponibili` S ON S.`ID` = P.`Server`
+        WHERE D.`Paese` = paese_utente
+    ), `Scelta` AS (
+        SELECT 
+            F.`ID`, F.`Server`,
+            (F.ScoreRis + F.ScoreRate + F.ScoreDistanza + F.ScoreCarico) AS "Score"
+        FROM `FileServerScore` F
+        ORDER BY "Score" ASC -- Minore e' lo Score migliore e' la scelta
+        LIMIT 1
+    )
+    SELECT S.`ID`, S.`Server`, S.`Score` INTO FileID, ServerID, Score
+    FROM `Scelta` S;
+END $$
+
+CREATE FUNCTION `MathMap`(
+    X FLOAT,
+    inMin FLOAT,
+    inMax FLOAT,
+    outMin FLOAT,
+    outMax FLOAT
+)
+RETURNS FLOAT
+DETERMINISTIC
+BEGIN
+    RETURN outMin + (outMax - outMin) * (x - inMin) / (inMax - inMin);
+END $$
+
+CREATE FUNCTION `CalcolaDelta`(
+    Max FLOAT,
+    Valore FLOAT
+)
+RETURNS FLOAT
+DETERMINISTIC
+BEGIN
+    IF Max IS NULL THEN
+        RETURN IF (
+            Valore < 0.0,
+            Valore * (-1),
+            2.0 * Valore
+        );
+    END IF;
+
+    RETURN IF (
+        Max > Valore,
+        Max - Valore,
+        2.0 * (Valore - Max)
+    );
+END $$
+
+CREATE FUNCTION `StrListContains` (
+    `Pagliaio` VARCHAR(256),
+    `Ago` VARCHAR(10)
+)
+RETURNS BOOLEAN
+DETERMINISTIC
+BEGIN
+    DECLARE PagliaioRidotto VARCHAR(256);
+    SET PagliaioRidotto = Pagliaio;
+
+    IF Pagliaio IS NULL OR LENGTH(Pagliaio) = 0 THEN
+        RETURN FALSE;
+    END IF;
+
+    WHILE PagliaioRidotto <> '' DO
+
+        IF TRIM(LOWER(SUBSTRING_INDEX(PagliaioRidotto, ',', 1))) = TRIM(LOWER(`Ago`)) THEN
+            -- Ignoro gli spazi e il CASE della stringa: gli spazi creare dei falsi negativi, 
+            -- mentre la stringa Ago potrebbe venire inviata con case dipendenti dalla piattaforma del client
+            RETURN TRUE;
+        END IF; 
+        
+        IF LOCATE(',', PagliaioRidotto) > 0 THEN
+            SET PagliaioRidotto = SUBSTRING(PagliaioRidotto, LOCATE(',', PagliaioRidotto) + 1);
+        ELSE
+            SET PagliaioRidotto = '';
+        END IF;
+        
+    END WHILE;
+
+    RETURN FALSE;
+END $$
+
+DELIMITER ;
+
+USE `FilmSphere`;
+
+CREATE OR REPLACE VIEW `ServerConCarico` AS
+    SELECT S.*, (S.`CaricoAttuale` / S.`MaxConnessioni`) AS "CaricoPercentuale"
+    FROM `Server` S;
+
+-- Materialized view che contiene i suggerimenti di Erogazioni da spostare e dove spostarle
+-- Non è presente nell'ER perché i suoi volumi sono talmente piccoli da essere insignificante in confronto alle altre
+-- La tabella è vista più come un sistema di comunicazione tra il DBMS che individua i client da spostare e i server (fisici)\
+-- che devono sapere chi spostare
+CREATE TABLE IF NOT EXISTS `ModificaErogazioni`
+(
+    -- Riferimenti a Erogazione
+    `Server` INT NOT NULL, 
+    `IP` INT UNSIGNED NOT NULL,
+    `InizioConnessione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `Utente` VARCHAR(100) NOT NULL,
+    `Edizione` INT NOT NULL,
+    `Timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Alternativa
+    `Alternativa` INT NOT NULL, 
+    `File` INT NOT NULL, 
+    `Punteggio` FLOAT NOT NULL,
+
+    PRIMARY KEY(`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`),
+    FOREIGN KEY (`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`)
+        REFERENCES `Erogazione`(`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`) 
+            ON UPDATE CASCADE ON DELETE CASCADE,
+
+    FOREIGN KEY(`Server`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY(`Alternativa`) REFERENCES `Server`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE,
+    FOREIGN KEY(`File`) REFERENCES `File`(`ID`) ON UPDATE CASCADE ON DELETE CASCADE
+) Engine=InnoDB;
+
+
+DROP PROCEDURE IF EXISTS `RibilanciamentoCarico`;
+DROP EVENT IF EXISTS `RibilanciamentoCaricoEvent`;
+
+DELIMITER $$
+
+CREATE PROCEDURE `RibilanciamentoCarico` ()
+ribilancia_body:BEGIN
+    -- Variables declaration
+    DECLARE `MaxCarichi` FLOAT DEFAULT 0.0;
+    DECLARE `MediaCarichi` FLOAT DEFAULT NULL;
+    DECLARE fetching BOOLEAN DEFAULT TRUE;
+
+    -- Utente, Server e Visualizzazione
+    DECLARE server_id INT DEFAULT NULL;
+    DECLARE edizione_id INT DEFAULT NULL;
+    DECLARE ip_utente INT UNSIGNED DEFAULT NULL;
+    DECLARE paese_utente CHAR(2) DEFAULT '??';
+    DECLARE codice_utente VARCHAR(100) DEFAULT NULL;
+    DECLARE max_definiz BIGINT DEFAULT 0;
+    DECLARE timestamp_vis TIMESTAMP DEFAULT NULL;
+    DECLARE timestamp_conn TIMESTAMP DEFAULT NULL;
+
+    -- Server da escludere (perche' carichi)
+    DECLARE server_da_escludere VARCHAR(32) DEFAULT NULL;
+
+    -- Cursor declaration
+    DECLARE cur CURSOR FOR
+        WITH `ServerPiuCarichi` AS (
+            SELECT S.`ID`
+            FROM `ServerConCarico` S
+            WHERE S.`CaricoPercentuale` >= (SELECT AVG(`CaricoPercentuale`) FROM `ServerConCarico`)
+            ORDER BY S.`CaricoPercentuale` DESC
+            LIMIT 3
+        ), `ServerErogazioni` AS (
+            SELECT E.*, TIMESTAMPDIFF(SECOND, CURRENT_TIMESTAMP, E.`TimeStamp`) AS "TempoTrascorso"
+            FROM `ServerPiuCarichi` S
+                INNER JOIN `Erogazione` E ON S.`ID` = E.`Server`
+            WHERE TIMESTAMPDIFF(MINUTE, E.`InizioErogazione`, CURRENT_TIMESTAMP) > 29
+        ), `ErogazioniNonAlTermine` AS (
+            SELECT E.*, E.`InizioConnessione` AS "Inizio", (Ed.`Lunghezza` - E.TempoTrascorso) AS "TempoMancante"
+            FROM `ServerErogazioni` E
+                INNER JOIN `Edizione` Ed ON E.`Edizione` = Ed.`ID`
+                -- Calcolo quanto dovrebbe mancare al termine della visione e controllo che sia sotto i 10 min
+            HAVING "TempoMancante" <= 600
+        )
+        SELECT 
+            E.`Server`, E.`Edizione`, E.`IP`,
+            E.`Utente`, A.`Definizione`,
+            E.`TimeStamp`, E.`InizioConnessione`,
+            GROUP_CONCAT(DISTINCT S.`ID` SEPARATOR ',') AS "ServerDaEscludere"
+        FROM `ErogazioniNonAlTermine` E
+            INNER JOIN `Utente` U ON U.`Codice` = E.`Utente`
+            INNER JOIN `Abbonamento` A ON A.`Tipo` = U.`Abbonamento`
+            CROSS JOIN `ServerPiuCarichi` S
+        GROUP BY E.`Edizione`, E.`IP`, E.`Utente`, A.`Definizione`, E.`TimeStamp`, E.`InizioConnessione`;
+    
+    DECLARE CONTINUE HANDLER FOR NOT FOUND
+        SET fetching = FALSE;
+
+    CREATE TEMPORARY TABLE IF NOT EXISTS `AlternativaErogazioni`
+    (
+        -- Riferimenti a Erogazione
+        `Server` INT NOT NULL, 
+        `IP` INT UNSIGNED NOT NULL,
+        `InizioConnessione` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        `Utente` VARCHAR(100) NOT NULL,
+        `Edizione` INT NOT NULL,
+        `Timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+        -- Alternativa
+        `Alternativa` INT NOT NULL, 
+        `File` INT NOT NULL, 
+        `Punteggio` FLOAT NOT NULL,
+
+        PRIMARY KEY(`IP`, `InizioConnessione`, `Timestamp`, `Edizione`, `Utente`)
+    ) Engine=InnoDB;
+
+    -- Actual operations
+    SELECT MAX(`CaricoPercentuale`), AVG(`CaricoPercentuale`) INTO `MaxCarichi`, `MediaCarichi`
+    FROM `ServerConCarico`;
+
+    IF `MediaCarichi` IS NULL OR `MaxCarichi` < 0.7 THEN
+        SIGNAL SQLSTATE '01000'
+            SET MESSAGE_TEXT = "Non c'è bisogno di ribilanciare le Erogazioni";
+        LEAVE ribilancia_body;
+    END IF;
+
+    TRUNCATE `AlternativaErogazioni`;
+    
+    OPEN cur;
+
+    ciclo:LOOP
+        FETCH cur INTO 
+            server_id, edizione_id, 
+            ip_utente, codice_utente, max_definiz,
+            timestamp_vis, timestamp_conn,
+            server_da_escludere;
+        
+        IF NOT fetching THEN
+            LEAVE ciclo;
+        END IF;
+
+        SET paese_utente = Ip2PaeseStorico(ip_utente, timestamp_conn);
+
+        CALL `TrovaMigliorServer`(
+            edizione_id, paese_utente, max_definiz, 
+            0, 0,
+            NULL, NULL,
+            server_da_escludere,
+            @FileID, @ServerID, @Punteggio);
+
+        IF @FileID IS NOT NULL AND @ServerID IS NOT NULL THEN
+            INSERT INTO `AlternativaErogazioni` (
+                `Server`, `Utente`, `Edizione`,
+                `Timestamp`, `InizioConnessione`, `IP`,
+                `Alternativa`, `File`, `Punteggio`) VALUES (
+                    server_id, codice_utente, edizione_id,
+                    timestamp_vis, timestamp_conn, ip_utente,
+                    @ServerID, @FileID, @Punteggio);
+        END IF;
+        
+    END LOOP;
+
+    CLOSE cur;
+
+    -- Prepariamo la tabella per i nuovi suggerimenti
+    DELETE
+    FROM `ModificaErogazioni`;
+
+    IF (SELECT COUNT(*) FROM `AlternativaErogazioni`) = 0 THEN
+        -- Non ci sono opzioni, esco
+        SIGNAL SQLSTATE '01000'
+            SET MESSAGE_TEXT = "Non ci sono opzioni di ribilanciamento";
+        LEAVE ribilancia_body;
+    END IF;
+
+    INSERT INTO `ModificaErogazioni`(
+                `Server`, `Utente`, `Edizione`,
+                `Timestamp`, `InizioConnessione`, `IP`,
+                `Alternativa`, `File`, `Punteggio`)
+                
+        WITH `ConClassifica` AS (
+            SELECT A.*, RANK() OVER (
+                PARTITION BY A.`Server`
+                ORDER BY A.`Punteggio` ASC
+            ) Classifica
+            FROM `AlternativaErogazioni` A
+        ) 
+        SELECT 
+            A.`Server`, A.`Utente`, A.`Edizione`, 
+            A.`Timestamp`, A.`InizioConnessione`, A.`IP`, 
+            A.`Alternativa`, A.`File`, A.`Punteggio`
+        FROM `ConClassifica` A
+            INNER JOIN `Server` S ON A.`Server` = S.`ID`
+        WHERE A.`Classifica` <= FLOOR(S.`MaxConnessioni` / 20) + 1; -- Per ogni Server sposto al massimo il 5% del suo MaxConnessioni
+
+END ; $$
+
+CREATE EVENT `RibilanciamentoCaricoEvent`
+ON SCHEDULE EVERY 10 MINUTE
+DO
+    CALL `RibilanciamentoCarico`();
+$$
+
+DELIMITER ;
+

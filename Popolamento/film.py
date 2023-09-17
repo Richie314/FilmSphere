@@ -473,7 +473,7 @@ def generate_film(ID, film):
     desc = [x for i, x in enumerate(line) if i not in excludedIndices]
     titolo = line[0].strip().replace('\\', '\\\\').replace('\'', '\\\'') + ' ' + str(random.randint(1, 6))
     descrizione = "".join(desc).strip()[1:-1].replace('\\', '\\\\').replace('\'', '\\\'')
-    anno = int(line[-1].strip()) + random.randint(0, 4)
+    anno = min(int(line[-1].strip()) + random.randint(0, 4), 2020)
     
     # Dati sorteggiati
     casa_prod = random.choice(case_prod)

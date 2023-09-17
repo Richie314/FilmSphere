@@ -124,7 +124,7 @@ CREATE PROCEDURE `TrovaMigliorServer` (
             CalcolaDelta(max_definizione, F.`Risoluzione`) AS "DeltaRis", 
             CalcolaDelta(MaxBitRate, F.`BitRate`) AS "DeltaRate"
         FROM `File` F
-            INNER JOIN Edizione E ON E.`ID` = F.`Edizione`
+            INNER JOIN `Edizione` E ON E.`ID` = F.`Edizione`
         WHERE 
             E.`ID` = id_edizione AND 
             (ListaAudioEncodings IS NULL OR StrListContains(ListaAudioEncodings, F.`FamigliaAudio`)) AND

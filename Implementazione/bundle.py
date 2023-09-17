@@ -1,21 +1,28 @@
+files = [
+    'AreaContenuti.sql',
+    'AreaFormato.sql',
+    'AreaUtenti.sql',
+    'AreaStreaming.sql',
+
+    '../Analytics/BilanciamentoCarico.sql',
+    '../Analytics/Classifica.sql',
+    '../Analytics/Custom.sql',
+    '../Analytics/RaccomandazioneContenuti.sql',
+    '../Analytics/Rating.sql',
+    '../Analytics/RatingUtente.sql',
+
+    '../Streaming/CachingPrevisionale.sql',
+    '../Streaming/IndividuazioneServer.sql',
+    '../Streaming/RibilanciamentoCarico.sql'
+]
+
 def bundle():
     with open('Bundle.sql', 'w') as out:
-        with open('AreaContenuti.sql', 'r') as file:
-            for line in file:
-                out.write(line)
-        out.write('\n\n')
-        with open('AreaFormato.sql', 'r') as file:
-            for line in file:
-                out.write(line)
-        out.write('\n\n')
-        with open('AreaUtenti.sql', 'r') as file:
-            for line in file:
-                out.write(line)
-        out.write('\n\n')
-        with open('AreaStreaming.sql', 'r') as file:
-            for line in file:
-                out.write(line)
-
+        for file in files:
+            with open(file, 'r') as file:
+                for line in file:
+                    out.write(line)
+            out.write('\n\n')
 
 if __name__ == '__main__':
     bundle()
