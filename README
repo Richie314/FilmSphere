@@ -31,7 +31,7 @@ Test contiene al suo interno tutti i file adibiti a testare sia le operazioni ch
 
 Come Implementare e Popolare il Database?
 > Eseguire prima 'Implementazione/Bundle.sql' e poi 'Popolamento/PopolamentoFittizio.sql'
-L'esecuzione di PopolamentoFittizio potrebbe impiegare un tempo poco meno di un minuto per completare. 
+L'esecuzione di PopolamentoFittizio potrebbe impiegare un tempo attorno a poco meno di un minuto per completare. 
 Questo è dovuto al fatto che il popolamento in questione comprende circa 50 000 IPRange realmente esistenti.
 
 
