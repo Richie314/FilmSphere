@@ -1187,14 +1187,13 @@ BEGIN
     SELECT
         F.`ID` AS File,
         EP.`Server`
-    FROM EdizionePaese EP
-    INNER JOIN File F
-        ON F.Edizione = EP.Edizione
+    FROM `EdizionePaese` EP
+    INNER JOIN `File` F USING (`Edizione`)
     WHERE NOT EXISTS (
         SELECT *
-        FROM PoP
-        WHERE PoP.File = F.ID
-        AND PoP.Server = EP.Server
+        FROM `PoP`
+        WHERE `PoP`.`File` = F.`ID`
+        AND `PoP`.`Server` = EP.`Server`
     );
 
 
@@ -1520,331 +1519,153 @@ USE `FilmSphere`;
 
 
 DROP FUNCTION IF EXISTS `RatingUtente`;
+
 DELIMITER //
+
 CREATE FUNCTION `RatingUtente`(
     id_film INT,
     id_utente VARCHAR(100)
 )
-RETURNS FLOAT NOT DETERMINISTIC
-    READS SQL DATA
+RETURNS FLOAT 
+NOT DETERMINISTIC
+READS SQL DATA
 BEGIN
+    DECLARE out_value FLOAT DEFAULT 0.0;
 
-    DECLARE G1 VARCHAR(50);
-    DECLARE G2 VARCHAR(50);
-    DECLARE A1_Nome VARCHAR(50);
-    DECLARE A1_Cognome VARCHAR(50);
-    DECLARE A2_Nome VARCHAR(50);
-    DECLARE A2_Cognome VARCHAR(50);
-    DECLARE A3_Nome VARCHAR(50);
-    DECLARE A3_Cognome VARCHAR(50);
-    DECLARE L1 VARCHAR(50);
-    DECLARE L2 VARCHAR(50);
-    DECLARE R_Nome VARCHAR(50);
-    DECLARE R_Cognome VARCHAR(50);
-    DECLARE RA INT;
-
-    DECLARE G1_b TINYINT;
-    DECLARE G2_b TINYINT;
-    DECLARE A1_b TINYINT;
-    DECLARE A2_b TINYINT;
-    DECLARE A3_b TINYINT;
-    DECLARE L1_b TINYINT;
-    DECLARE L2_b TINYINT;
-    DECLARE R_b TINYINT;
-    DECLARE RA_b TINYINT;
-
-    -- ------------------------
-    -- Determino i Preferiti
-    -- ------------------------
-
-    -- L'idea e' di creare delle classifica come Temporary Table
-    -- per poi andare a selezionare l'i-esimo preferito
-
-    DROP TEMPORARY TABLE IF EXISTS GeneriClassifica;
-    CREATE TEMPORARY TABLE IF NOT EXISTS GeneriClassifica
-    WITH
-        GenereVisualizzazioni AS (
-            SELECT
-                Genere,
-                COUNT(*) AS N
-            FROM Visualizzazione V
-            INNER JOIN Edizione E
-                ON E.ID = V.Edizione
-            INNER JOIN GenereFilm GF
-                ON GF.Film = E.Film
-            WHERE V.Utente = id_utente
-            GROUP BY Genere
-        )
-    SELECT
-        Genere,
-        RANK() OVER (ORDER BY N DESC, Genere) as Rk
-    FROM GenereVisualizzazioni;
-
-    SET G1 := (
+    WITH `VisualizzazioniUtente` AS (
+        SELECT E.`Film`, V.`Edizione`, V.`Utente`, E.`RapportoAspetto`, F.`NomeRegista`, F.`CognomeRegista`
+        FROM `Visualizzazione` V
+            INNER JOIN `Edizione` E ON E.ID = V.`Edizione`
+            INNER JOIN `Film` F ON F.`ID` = E.`Film`
+        WHERE V.`Utente` = id_utente
+    ), 
+    
+    `GenereVisualizzazioni` AS (
         SELECT
-            Genere
-        FROM GeneriClassifica
-        WHERE rk = 1
-    );
-
-    SET G2 := (
+            GF.`Genere`,
+            COUNT(*),
+            RANK() OVER (
+                ORDER BY COUNT(*) DESC, GF.`Genere`
+            ) AS rk
+        FROM `VisualizzazioniUtente` V
+            INNER JOIN `GenereFilm` GF USING(`Film`)
+        GROUP BY GF.`Genere`
+    ), `PunteggiGeneri` AS (
+        SELECT (3 - G.`rk`) AS Punteggio
+        FROM `GenereVisualizzazioni` G
+            INNER JOIN `GenereFilm` GF USING(`Genere`)
+        WHERE GF.`Film` = id_film AND G.`rk` <= 2
+        LIMIT 2
+    ), 
+    
+    `AttoriVisualizzazioni` AS (
         SELECT
-            Genere
-        FROM GeneriClassifica
-        WHERE rk = 2
-    );
-
-
-    DROP TEMPORARY TABLE IF EXISTS AttoriClassifica;
-    CREATE TEMPORARY TABLE IF NOT EXISTS AttoriClassifica
-        WITH
-            AttoriVisualizzazioni AS (
-                SELECT
-                    R.NomeAttore,
-                    R.CognomeAttore,
-                    COUNT(*) AS N
-                FROM Visualizzazione V
-                INNER JOIN Edizione E
-                    ON E.ID = V.Edizione
-                INNER JOIN Recitazione R
-                    ON R.Film = E.Film
-                WHERE V.Utente = id_utente
-                GROUP BY R.NomeAttore, R.CognomeAttore
-            )
+            R.`NomeAttore`,
+            R.`CognomeAttore`,
+            COUNT(*),
+            RANK() OVER (
+                ORDER BY COUNT(*) DESC, R.`NomeAttore`, R.`CognomeAttore`
+            ) AS rk
+        FROM `VisualizzazioniUtente` V
+            INNER JOIN `Recitazione` R USING(`Film`)
+        GROUP BY R.`NomeAttore`, R.`CognomeAttore`
+    ), `PunteggiAttori` AS (
+        SELECT (CASE
+            WHEN A.`rk` = 1 THEN 1.5
+            WHEN A.`rk` = 2 THEN 1.0
+            WHEN A.`rk` = 3 THEN 0.5
+            END) AS Punteggio
+        FROM `AttoriVisualizzazioni` A
+            INNER JOIN `Recitazione` R USING(`NomeAttore`, `CognomeAttore`)
+        WHERE R.`Film` = id_film AND A.`rk` <= 3
+        LIMIT 3
+    ),
+    
+    `LinguaVisualizzazioni` AS (
         SELECT
-            NomeAttore, CognomeAttore,
-            RANK() OVER(ORDER BY N DESC, NomeAttore, CognomeAttore) AS rk
-        FROM AttoriVisualizzazioni;
-
-    SET A1_Nome := (
+            D.`Lingua`,
+            COUNT(*),
+            RANK() OVER(
+                ORDER BY COUNT(*) DESC
+            ) AS rk
+        FROM `VisualizzazioniUtente` V
+            INNER JOIN `File` F USING (`Edizione`)
+            INNER JOIN `Doppiaggio` D ON D.`File` = F.`ID`
+        GROUP BY D.`Lingua`
+    ), `PunteggiLingue` AS (
+        SELECT 1 AS Punteggio
+        FROM `LinguaVisualizzazioni` L
+            INNER JOIN `Doppiaggio` D USING(`Lingua`)
+            INNER JOIN `File` F ON F.`ID` = D.`File`
+            INNER JOIN `Edizione` E ON E.`ID` = F.`Edizione`
+        WHERE E.`Film` = id_film AND L.`rk` <= 2
+        LIMIT 2
+    ),
+    
+    `RegistaVisualizzazioni` AS (
         SELECT
-            NomeAttore
-        FROM AttoriClassifica
-        WHERE rk = 1
-    );
-
-    SET A1_Cognome := (
-        SELECT
-            CognomeAttore
-        FROM AttoriClassifica
-        WHERE rk = 1
-    );
-
-    SET A2_Nome := (
-        SELECT
-            NomeAttore
-        FROM AttoriClassifica
-        WHERE rk = 2
-    );
-
-    SET A2_Cognome := (
-        SELECT
-            CognomeAttore
-        FROM AttoriClassifica
-        WHERE rk = 2
-    );
-
-    SET A3_Nome := (
-        SELECT
-            NomeAttore
-        FROM AttoriClassifica
-        WHERE rk = 3
-    );
-
-    SET A3_Cognome := (
-        SELECT
-            CognomeAttore
-        FROM AttoriClassifica
-        WHERE rk = 3
-    );
-
-    DROP TEMPORARY TABLE IF EXISTS LinguaClassifica;
-    CREATE TEMPORARY TABLE IF NOT EXISTS LinguaClassifica
-        WITH
-            LinguaVisualizzazioni AS (
-                SELECT
-                    D.Lingua,
-                    COUNT(*) AS N
-                FROM Visualizzazione V
-                INNER JOIN File F
-                    ON F.Edizione = V.Edizione
-                INNER JOIN Doppiaggio D
-                    ON D.File = F.ID
-                WHERE V.Utente = id_utente
-                GROUP BY D.Lingua
-            )
-        SELECT
-            Lingua,
-            RANK() OVER(ORDER BY N DESC, Lingua) AS rk
-        FROM LinguaVisualizzazioni;
-
-    SET L1 := (
-        SELECT
-            Lingua
-        FROM LinguaClassifica
-        WHERE rk = 1
-    );
-
-    SET L2 := (
-        SELECT
-            Lingua
-        FROM LinguaClassifica
-        WHERE rk = 2
-    );
-
-    DROP TEMPORARY TABLE IF EXISTS RegistaUtente;
-    CREATE TEMPORARY TABLE IF NOT EXISTS RegistaUtente
-        WITH
-            RegistaVisualizzazioni AS (
-                SELECT
-                    F.NomeRegista,
-                    F.CognomeRegista,
-                    COUNT(*) AS N
-                FROM Visualizzazione V
-                INNER JOIN Edizione E
-                    ON V.Edizione = E.ID
-                INNER JOIN Film F
-                    ON F.ID = E.Film
-                WHERE V.Utente = id_utente
-                GROUP BY F.NomeRegista, F.CognomeRegista
-            )
-        SELECT
-            NomeRegista,
-            CognomeRegista
-        FROM RegistaVisualizzazioni
-        ORDER BY N DESC, CognomeRegista, NomeRegista
-        LIMIT 1;
-
-    SET R_Nome := (
-        SELECT NomeRegista
-        FROM RegistaUtente
-    );
-
-    SET R_Cognome := (
-        SELECT NomeRegista
-        FROM RegistaUtente
-    );
-
-    SET RA := (
-        WITH
-            RapportoAspettoVisualizzazioni AS (
-                SELECT
-                    E.RapportoAspetto,
-                    COUNT(*) AS N
-                FROM Visualizzazione V
-                INNER JOIN Edizione E
-                    ON E.ID = V.Edizione
-                WHERE V.Utente = id_utente
-                GROUP BY E.RapportoAspetto
-            )
-        SELECT
-            RapportoAspetto
-        FROM RapportoAspettoVisualizzazioni
-        ORDER BY N DESC, RapportoAspetto
+            V.`NomeRegista`,
+            V.`CognomeRegista`,
+            COUNT(*)
+        FROM `VisualizzazioniUtente` V
+        GROUP BY V.`NomeRegista`, V.`CognomeRegista`
+        ORDER BY COUNT(*) DESC
         LIMIT 1
-    );
+    ), `PunteggioRegista` AS (
+        SELECT 1 AS Punteggio
+        FROM `RegistaVisualizzazioni` R
+            INNER JOIN `Film` F USING(`NomeRegista`, `CognomeRegista`)
+        WHERE F.`ID` = id_film
+    ),
 
 
-    -- -------------------------------
-    -- Determino i Valori Booleani
-    -- -------------------------------
-
-    -- L'idea e' di creare delle Temporay Table contenente i vari parametri di interesse del
-    -- film (e.g. Generi) per poi andare a determinare quali preferenze sono soddisfatte
-
-    DROP TEMPORARY TABLE IF EXISTS GeneriFilm;
-    CREATE TEMPORARY TABLE IF NOT EXISTS GeneriFilm
-        SELECT Genere
-        FROM GenereFilm
-        WHERE Film = id_film;
-
-    DROP TEMPORARY TABLE IF EXISTS AttoriFilm;
-    CREATE TEMPORARY TABLE IF NOT EXISTS AttoriFilm
+    `RapportoAspettoVisualizzazioni` AS (
         SELECT
-            NomeAttore,
-            CognomeAttore
-        FROM Recitazione
-        WHERE Film = id_film;
+            V.`RapportoAspetto`,
+            COUNT(*)
+        FROM `VisualizzazioniUtente` V
+        GROUP BY V.`RapportoAspetto`
+        ORDER BY COUNT(*) DESC
+        LIMIT 1
+    ), `PunteggioRapportoAspetto` AS (
+        SELECT 1 AS Punteggio
+        FROM `RapportoAspettoVisualizzazioni` R
+            INNER JOIN `Edizione` E USING(`RapportoAspetto`)
+        WHERE E.`Film` = id_film
+        LIMIT 1
+    ),
 
-    DROP TEMPORARY TABLE IF EXISTS LingueFilm;
-    CREATE TEMPORARY TABLE IF NOT EXISTS LingueFilm
-        SELECT DISTINCT
-            D.Lingua
-        FROM Edizione E
-        INNER JOIN File F
-            ON F.Edizione = E.ID
-        INNER JOIN Doppiaggio D
-            ON D.File = F.ID
-        WHERE E.Film = id_film;
+    `Punteggi` AS (
+        SELECT *
+        FROM `PunteggiGeneri`
 
-    SET G1_b = (
-        SELECT COUNT(*)
-        FROM GeneriFilm
-        WHERE Genere = G1
-    );
+        UNION ALL
 
-    SET G2_b = (
-        SELECT COUNT(*)
-        FROM GeneriFilm
-        WHERE Genere = G2
-    );
+        SELECT *
+        FROM `PunteggiAttori`
 
-    SET A1_b = (
-        SELECT COUNT(*)
-        FROM AttoriFilm
-        WHERE NomeAttore = A1_Nome
-        AND CognomeAttore = A1_Cognome
-    );
+        UNION ALL
 
-    SET A2_b = (
-        SELECT COUNT(*)
-        FROM AttoriFilm
-        WHERE NomeAttore = A2_Nome
-        AND CognomeAttore = A2_Cognome
-    );
+        SELECT *
+        FROM `PunteggiLingue`
 
-    SET A3_b = (
-        SELECT COUNT(*)
-        FROM AttoriFilm
-        WHERE NomeAttore = A3_Nome
-        AND CognomeAttore = A3_Cognome
-    );
+        UNION ALL
 
-    SET L1_b = (
-        SELECT COUNT(*)
-        FROM LingueFilm
-        WHERE Lingua = L1
-    );
+        SELECT *
+        FROM `PunteggioRegista`
 
-    SET L2_b = (
-        SELECT COUNT(*)
-        FROM LingueFilm
-        WHERE Lingua = L2
-    );
+        UNION ALL
 
-    SET R_b = (
-        SELECT COUNT(*)
-        FROM Film
-        WHERE ID = id_film
-        AND NomeRegista = R_Nome
-        AND CognomeRegista = R_Cognome
-    );
+        SELECT *
+        FROM `PunteggioRapportoAspetto`
+    )
+    SELECT (FLOOR(SUM(`Punteggio`)) / 2.0) INTO out_value 
+    FROM `Punteggi`;
 
-    SET RA_b = (
-        SELECT COUNT(*)
-        FROM (
-            SELECT DISTINCT
-                RapportoAspetto
-            FROM Edizione
-            WHERE Film = id_film
-            AND RapportoAspetto = RA
-        ) AS T
-    );
+    RETURN IFNULL(out_value, 0.0);
 
-    RETURN FLOOR(2 * G1_b + G2_b + 1.5 * A1_b + A2_b + 0.5 * A3_b + L1_b + L2_b + R_b + RA_b) / 2;
+END //
 
-END
-//
 DELIMITER ;
 
 USE `FilmSphere`;
@@ -1864,72 +1685,64 @@ BEGIN
     --    per un numero che scala in maniera decrescente in base al ValoreDistanza tra Paese e Server
     -- 4) Si restituiscono le prime X coppie Server-File con somma maggiore per le quali non esiste gi`a un P.o.P.
     WITH
-        UtentePaeseVolte AS (
+        `UtentePaeseVolte` AS (
             SELECT
-                Utente,
-                Paese,
-                COUNT(*) AS Volte
-            FROM (
-                SELECT
-                    Utente,
-                    Paese
-                FROM Visualizzazione V
-                INNER JOIN IPRange IP
-                    ON IP.Inizio <= V.IP AND IP.Fine >= V.IP AND IP.DataInizio <= V.InizioConnessione AND (IP.DataFine IS NULL OR IP.DataFine >= V.InizioConnessione)
-            ) AS T
-            GROUP BY Utente, Paese
+                V.`Utente`,
+                IFNULL (R.`Paese`, '??') AS `Paese`,
+                COUNT(*) AS `Volte`
+            FROM `Visualizzazione` V
+            
+            LEFT OUTER JOIN `IPRange` R ON 
+                (V.`IP` BETWEEN R.`Inizio` AND R.`Fine`) AND 
+                (V.`InizioConnessione` BETWEEN R.`DataInizio` AND IFNULL(R.`DataFine`, CURRENT_TIMESTAMP))
+            GROUP BY `Utente`, `Paese`
         ),
-        UtentePaesePiuFrequente AS (
-            SELECT
-                Utente,
-                Paese
-            FROM UtentePaeseVolte UPV
-            WHERE UPV.Volte = (
-                SELECT MAX(UPV2.Volte)
-                FROM UtentePaeseVolte UPV2
-                WHERE UPV2.Utente = UPV.Utente
+        `UtentePaesePiuFrequente` AS (
+            SELECT UPV.*
+            FROM `UtentePaeseVolte` UPV
+            WHERE UPV.`Volte` >= ALL(
+                SELECT UPV2.`Volte`
+                FROM `UtentePaeseVolte` UPV2
+                WHERE UPV2.`Utente` = UPV.`Utente`
             )
         ),
-        RankingPaeseServer AS (
-            SELECT
-                Server,
-                Paese,
-                RANK() OVER(PARTITION BY Paese ORDER BY ValoreDistanza) AS rk
-            FROM DistanzaPrecalcolata
+        `ServerTargetPerPaese` AS (
+            SELECT `Server`, `Paese`, `ValoreDistanza`,
+                RANK() OVER(
+                    PARTITION BY `Paese` 
+                    ORDER BY `ValoreDistanza`) AS rk
+            FROM `DistanzaPrecalcolata`
+            -- WHERE `Paese` <> '??'
         ),
-        ServerTargetPerPaese AS (
+        `UtentePaeseServer` AS (
             SELECT
-                Server,
-                Paese
-            FROM RankingPaeseServer
+                UP.`Utente`,
+                UP.`Paese`,
+                S.`Server`,
+                S.`ValoreDistanza`
+            FROM `UtentePaesePiuFrequente` UP
+                INNER JOIN `ServerTargetPerPaese` S USING(`Paese`)
             WHERE rk <= N
-        ),
-        UtentePaeseServer AS (
-            SELECT
-                UP.Utente,
-                UP.Paese,
-                SP.Server,
-                DP.ValoreDistanza
-            FROM UtentePaesePiuFrequente UP
-            INNER JOIN ServerTargetPerPaese SP
-                USING(Paese)
-            INNER JOIN DistanzaPrecalcolata DP
-                ON DP.Server = SP.Server AND DP.Paese = UP.Paese
         ),
 
         -- 2) Per ogni coppia Utente, Paese si considerano gli M File con probabilità maggiore di essere guardati, ciascuno con la probabilità di essere guardato
-        FilmRatingUtente AS (
+        `FilmRatingUtente` AS (
             SELECT
-                F.ID,
-                U.Codice,
-                RatingUtente(F.ID, U.Codice) AS Rating
-            FROM Film F
-            NATURAL JOIN Utente U
+                F.`ID`,
+                U.`Codice`,
+                RatingUtente(F.`ID`, U.`Codice`) AS Rating,
+                RANK() OVER(
+                    PARTITION BY U.`Codice` 
+                    ORDER BY Rating DESC
+                ) AS rk
+            FROM `Film` F
+                CROSS JOIN `Utente` U
+            HAVING Rating > 0
         ),
-        10FilmUtente AS (
+        `10FilmUtente` AS (
             SELECT
-                ID AS Film,
-                Codice AS Utente,
+                `ID` AS Film,
+                `Codice` AS Utente,
                 (CASE
                     WHEN rk = 1 THEN 30.0
                     WHEN rk = 2 THEN 22.0
@@ -1942,86 +1755,67 @@ BEGIN
                     WHEN rk = 9 THEN 3.0
                     WHEN rk = 10 THEN 2.0
                 END) AS Probabilita
-            FROM (
-                SELECT
-                    ID,
-                    Codice,
-                    RANK() OVER(PARTITION BY Codice ORDER BY Rating DESC ) AS rk
-                FROM FilmRatingUtente
-            ) AS T
+            FROM `FilmRatingUtente`
             WHERE rk <= 10
         ),
-        FilmFile AS (
+        `FilmFileAssociati` AS (
             SELECT
-                F.ID AS Film,
-                FI.ID AS File,
-                F2FI.N AS NumeroFile
-            FROM Film AS F
-            INNER JOIN Edizione E
-                ON E.Film = F.ID
-            INNER JOIN File FI
-                ON FI.Edizione = E.ID
-            INNER JOIN (
-                -- Tabella avente Film e numero di File ad esso associati
-                SELECT
-                    F1.ID AS Film,
-                    COUNT(*) AS N
-                FROM Film AS F1
-                INNER JOIN Edizione E1
-                    ON E1.Film = F1.ID
-                INNER JOIN File FI1
-                    ON FI1.Edizione = E1.ID
-                GROUP BY F1.ID
-            ) AS F2FI
-                ON F2FI.Film = F.ID
-
+                F.`ID` AS Film,
+                FI.`ID` AS File
+            FROM `Film` F
+                INNER JOIN `Edizione` E ON E.`Film` = F.ID
+                INNER JOIN `File` FI ON FI.`Edizione` = E.ID
         ),
-        FileUtente AS (
+        `FilmFile` AS (
             SELECT
-                Utente,
-                File,
-                Probabilita / NumeroFile AS Probabilita
-            FROM 10FilmUtente
-            NATURAL JOIN FilmFile
+                F.*,
+                F1.`NumeroFile`
+            FROM `FilmFileAssociati` F
+                INNER JOIN (
+                    -- Tabella avente Film e numero di File ad esso associati
+                    SELECT
+                        F2.`Film`,
+                        COUNT(*) AS NumeroFile
+                    FROM `FilmFileAssociati` F2
+                    GROUP BY F2.`Film`
+                ) AS F1 USING (`Film`)
+            WHERE F1.`NumeroFile` > 0
         ),
-        MFilePerUtente AS (
+        `FileUtente` AS (
             SELECT
-                Utente,
-                File,
-                Probabilita
-            FROM (
-                SELECT
-                    *,
-                    RANK() OVER(PARTITION BY Utente ORDER BY Probabilita DESC) AS rk
-                FROM FileUtente
-            ) AS T
+                U.`Utente`,
+                F.`File`,
+                U.`Probabilita` / F.`NumeroFile` AS Probabilita,
+                RANK() OVER(
+                    PARTITION BY U.`Utente`
+                    ORDER BY U.`Probabilita` / F.`NumeroFile` DESC) AS rk
+            FROM `10FilmUtente` U
+                NATURAL JOIN `FilmFile` F
+        ),
+        `ServerFile` AS (
+            SELECT
+                `File`,
+                `Server`,
+                SUM(`Probabilita` * (1 + 1 / `ValoreDistanza`)) AS Importanza   -- MODIFICA VALORI PER QUESTA ESPRESSIONE
+            FROM `FileUtente` FU
+                INNER JOIN `UtentePaeseServer` SU USING(`Utente`)
             WHERE rk <= M
-        ),
-
-        ServerFile AS (
-            SELECT
-                File,
-                Server,
-                SUM(Probabilita * (1 + 1 / ValoreDistanza)) AS Importanza   -- MODIFICA VALORI PER QUESTA ESPRESSIONE
-            FROM MFilePerUtente FU
-            INNER JOIN UtentePaeseServer SU
-                USING(Utente)
-            GROUP BY File, Server
+            GROUP BY FU.`File`, SU.`Server`
         )
     SELECT
-        File,
-        Server
-    FROM ServerFile SF
+        `File`,
+        `Server`
+    FROM `ServerFile` SF
     WHERE NOT EXISTS (
         SELECT *
-        FROM PoP
-        WHERE PoP.Server = SF.Server AND PoP.File = SF.File
+        FROM `PoP`
+        WHERE `PoP`.`Server` = SF.`Server` AND PoP.`File` = SF.`File`
     )
     ORDER BY Importanza DESC
     LIMIT X;
 
-END
-//
+END //
+
 DELIMITER ;
 
 USE `FilmSphere`;
