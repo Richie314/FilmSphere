@@ -12,65 +12,51 @@ BEGIN
 
     IF p = 1 THEN
 
-        /*
-        WITH
-            FilmVisualizzazioni AS (
+        WITH `FilmVisualizzazioni` AS (
                 SELECT
-                    E.Film,
-                    COUNT(*) AS Visualizzazioni
-                FROM Visualizzazione V
-                INNER JOIN Utente U
-                    ON V.Utente = U.Codice
-                INNER JOIN Edizione E
-                    ON E.ID = V.Edizione
-                WHERE U.Abbonamento = tipo_abbonamento
-                AND Ip2PaeseStorico(V.IP, V.InizioConnessione) = codice_paese
-                GROUP BY E.Film
+                    E.`Film`,
+                    COUNT(*) AS "Visualizzazioni"
+                FROM `Visualizzazione` V
+                INNER JOIN `Utente` U ON V.`Utente` = U.`Codice`
+                INNER JOIN `Edizione` E ON E.`ID` = V.`Edizione`
+                LEFT OUTER JOIN `IPRange` R ON 
+                    (V.`IP` BETWEEN R.`Inizio` AND R.`Fine`) AND 
+                    (V.`InizioConnessione` BETWEEN R.`DataInizio` AND IFNULL(R.`DataFine`, CURRENT_TIMESTAMP))
+                WHERE U.`Abbonamento` = tipo_abbonamento AND IFNULL (R.`Paese`, '??') = codice_paese
+                GROUP BY E.`Film`
             )
-        SELECT
-            Film
-        FROM FilmVisualizzazioni
-        ORDER BY Visualizzazioni DESC
+        SELECT `Film`
+        FROM `FilmVisualizzazioni`
+        ORDER BY `Visualizzazioni` DESC
         LIMIT N;
-        */
-        WITH `VisualizzazioniFilm` AS (
-            SELECT V.Film, SUM(V.`NumeroVisualizzazioni`) AS "Visualizzazioni"
-            FROM `VisualizzazioniGiornaliere` V
-            GROUP BY V.`Film`
-            LIMIT N
-        )
-        SELECT F.`ID`, V.`Visualizzazioni`
-        FROM `Film` F
-            INNER JOIN `VisualizzazioniFilm` V ON V.`Film` = F.`ID`
-        ORDER BY V.`Vis` DESC;
 
     ELSEIF p = 2 THEN
 
         WITH
-            FilmVisualizzazioni AS (
+            `EdizioneVisualizzazioni` AS (
                 SELECT
-                    V.Edizione,
-                    COUNT(*) AS Visualizzazioni
-                FROM Visualizzazione V
-                INNER JOIN Utente U
-                    ON V.Utente = U.Codice
-                WHERE U.Abbonamento = tipo_abbonamento
-                AND Ip2PaeseStorico(V.IP, V.InizioConnessione) = codice_paese
-                GROUP BY V.Edizione
+                    V.`Edizione`,
+                    COUNT(*) AS "Visualizzazioni"
+                FROM `Visualizzazione` V
+                INNER JOIN `Utente` U ON V.`Utente` = U.`Codice`
+                LEFT OUTER JOIN `IPRange` R ON 
+                    (V.`IP` BETWEEN R.`Inizio` AND R.`Fine`) AND 
+                    (V.`InizioConnessione` BETWEEN R.`DataInizio` AND IFNULL(R.`DataFine`, CURRENT_TIMESTAMP))
+                WHERE U.Abbonamento = tipo_abbonamento AND IFNULL (R.`Paese`, '??') = codice_paese
+                GROUP BY V.`Edizione`
             )
-        SELECT
-            Edizione
-        FROM FilmVisualizzazioni
-        ORDER BY Visualizzazioni DESC
+        SELECT `Edizione`
+        FROM `EdizioneVisualizzazioni`
+        ORDER BY `Visualizzazioni` DESC
         LIMIT N;
 
     ELSE
 
         SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'Parametro P non Valido';
+            SET MESSAGE_TEXT = 'Parametro P non Valido';
 
     END IF;
 
-END
-//
+END //
+
 DELIMITER ;

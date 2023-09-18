@@ -27,7 +27,7 @@ def generate():
             assert len(country_code) == 2
             country_code = country_code.upper()
             
-            if ip_end - ip_start < 512:
+            if ip_end - ip_start < 1024:
                 continue
 
             this_line = f'(\'{country_code}\', {ip_start}, {ip_end}, CURRENT_TIMESTAMP - INTERVAL 20 DAY)'
