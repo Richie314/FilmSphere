@@ -28,7 +28,7 @@ BEGIN
             GF.`Genere`,
             COUNT(*),
             RANK() OVER (
-                ORDER BY COUNT(*) DESC 
+                ORDER BY COUNT(*) DESC, GF.`Genere`
             ) AS rk
         FROM `VisualizzazioniUtente` V
             INNER JOIN `GenereFilm` GF USING(`Film`)
@@ -47,7 +47,7 @@ BEGIN
             R.`CognomeAttore`,
             COUNT(*),
             RANK() OVER (
-                ORDER BY COUNT(*) DESC
+                ORDER BY COUNT(*) DESC, R.`NomeAttore`, R.`CognomeAttore`
             ) AS rk
         FROM `VisualizzazioniUtente` V
             INNER JOIN `Recitazione` R USING(`Film`)
