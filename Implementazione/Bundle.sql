@@ -1281,7 +1281,7 @@ BEGIN
 
     SET sum_v := (
         SELECT
-            SUM(F.MediaRecensioni)
+            SUM(IFNULL(F.MediaRecensioni, 0))
         FROM Artista A
         INNER JOIN Recitazione R
             ON R.NomeAttore = A.Nome AND R.CognomeAttore = A.Cognome
@@ -1339,11 +1339,6 @@ END //
 DELIMITER ;
 
 
-
-
-
-
-
 DROP FUNCTION IF EXISTS `ValutazioneRegista`;
 DELIMITER //
 CREATE FUNCTION `ValutazioneRegista`(
@@ -1361,7 +1356,7 @@ BEGIN
 
     SET sum_v := (
         SELECT
-            SUM(MediaRecensioni)
+            SUM(IFNULL(MediaRecensioni, 0))
         FROM Film
         WHERE NomeRegista = Nome AND CognomeRegista = Cognome
     );
@@ -1412,7 +1407,6 @@ BEGIN
 END //
 DELIMITER ;
 
-USE `FilmSphere`;
 
 DROP PROCEDURE IF EXISTS `RaccomandazioneContenuti`;
 DELIMITER //
