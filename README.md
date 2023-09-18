@@ -26,9 +26,10 @@ Test contiene al suo interno tutti i file adibiti a testare sia le operazioni ch
 
 
 Come Implementare e Popolare il Database?
-  # Eseguire prima 'Implementazione/Bundle.sql' e poi 'Popolamento/PopolamentoFittizio.sql'
+ # Eseguire prima 'Implementazione/Bundle.sql' e poi 'Popolamento/PopolamentoFittizio.sql'
 Come testare le varie Funzionalità e Operazioni?
-  # Eseguire gli script 'Test/Operazioni.sql', 'Test/Custom.sql', 
+ # Eseguire gli script
+  'Test/Operazioni.sql', 'Test/Custom.sql', 
     'Test/Classifica.sql', 'Test/BilanciamentoCarico.sql', 
     'Test/RaccomandazioneContenuti.sql', 'Test/CachingPrevisionale.sql',
     'Test/IndividuazioneServer.sql', 'Test/RibilanciamentoCarico.sql'
