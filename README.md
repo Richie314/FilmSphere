@@ -18,7 +18,7 @@ Per realizzare i diagrammi E-R ci siamo avvalsi di [draw.io](https://www.draw.io
 ### Diagramma da ristrutturare:
 ![E-R da ristrutturare!](/Immagini/Da%20ristrutturare.drawio.svg "E-R da ristrutturare")
 
-### Diagramma istrutturato:
+### Diagramma ristrutturato:
 ![E-R ristrutturato!](/Immagini/Ristrutturato.drawio.svg "E-R ristrutturato")
 
 ## Grafici dei benchmark
