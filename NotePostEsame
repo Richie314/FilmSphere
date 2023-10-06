@@ -6,7 +6,8 @@ a esaminarlo è stato solo l'Ing. Pistolesi, ma il prof Tonellotto se lo è guar
 -----------------------
 Durante l'orale, Pistolesi, guardando l'E-R, ha provato a suggerire di mettere le carte di credito in relazione con l'Utente: 
 un Utente ha N carte di credito ed una carta ha solo un proprietario, ma noi gli abbiamo fatto notare che una carta potrebbe essere usata per "regalare" un abbonamento ad una seconda persona.
-Pistolesi è stato soddisfatto della risposta
+Pistolesi è stato soddisfatto della risposta.
+Si consiglia di non usare un colore molto chiaro come quello usato da noi nell'area Streaming, in quanto non si vedebenissimo su sfondo chiaro
 
 -----------------------
  Tabelle degli accessi
