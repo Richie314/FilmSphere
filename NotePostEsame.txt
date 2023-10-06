@@ -1,5 +1,6 @@
 Il progetto è stato valutato 30L (che conta 33 nella media), 
 a esaminarlo è stato solo l'Ing. Pistolesi, ma il prof Tonellotto se lo è guardato dopo il nostro esame.
+In questa cartella, apparte questo file, si trova tutto e solo ciò che abbiamo consegnato ai prof.
 
 -----------------------
       Diagramma E-R
